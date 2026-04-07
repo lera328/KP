@@ -1,0 +1,24 @@
+# Architecture
+
+- The repository is split into a Django backend and a React frontend, orchestrated by Docker Compose with a PostgreSQL database service.
+- Backend is a REST API built with Django 4.2.11 and Django REST Framework 3.15.1.
+- Frontend is a Vite + React 18 single-page app with React Router and Bootstrap styling.
+- Main backend entry points are `backend/manage.py` and `backend/config/urls.py`.
+- Main frontend entry points are `frontend/src/main.jsx` and `frontend/src/App.jsx`.
+- Backend configuration is centralized in `backend/config/settings.py`.
+- The backend uses `AUTH_USER_MODEL = "users.User"` and DRF default authentication with session auth plus JWT auth.
+- Default DRF permission is authenticated access; the health check endpoint is explicitly public.
+- `apps.core` contains the health check endpoint and shared app shell.
+- `apps.users` handles user accounts, roles, profiles, login/logout, profile lookup, and admin user creation.
+- `apps.courses` handles courses and groups.
+- `apps.attendance` handles lesson topics, lessons, attendance marks, and make-up requests.
+- `apps.finance` handles subscriptions, payments, balance, and lesson charging.
+- Authorization is role-based through `Role` records and the custom `IsAdminRole` permission.
+- Frontend auth state is held in `AuthContext` and persisted with `localStorage` access tokens.
+- Frontend API calls are centralized in `frontend/src/services/api.js`.
+- Frontend route guards are implemented through `ProtectedRoute` and `RoleRoute`.
+- The dashboard component switches views by role: admin, teacher, parent, student.
+- The current frontend contains implemented login, dashboard, and route scaffolding with placeholder pages for most role sections.
+- The current backend exposes JSON APIs for auth, users, courses, attendance, and finance under `/api/`.
+- The current frontend is a browser client for those endpoints and does not contain its own backend logic.
+- The architecture is monolithic on the backend side and client-server on the frontend side, with no additional services beyond PostgreSQL.

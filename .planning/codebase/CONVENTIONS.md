@@ -1,0 +1,42 @@
+# Conventions
+
+- Backend is a Django 4.2 + DRF codebase with app-based modularity under `backend/apps/`.
+- Models, serializers, views, permissions, urls, and migrations are separated by app.
+- Naming is mostly Django-standard: PascalCase model/serializer/view classes, snake_case functions and fields, lowercase app labels.
+- API paths are resource-oriented and grouped by app: `/api/auth/`, `/api/`, `/api/finance/`.
+- View style is mixed:
+  - class-based generic views for list/create endpoints;
+  - function-based views for session login, logout, profile, attendance actions, and health check;
+  - DRF routers for finance viewsets.
+- Serializer style is explicit and small:
+  - `ModelSerializer` for simple CRUD models;
+  - plain `Serializer` for action-oriented payloads;
+  - `create()` overrides for nested side effects.
+- Validation is split across layers:
+  - serializer field validation for required payload shape and choice fields;
+  - `validate()` methods for cross-field checks;
+  - model `clean()` for domain rules;
+  - database constraints for uniqueness.
+- Role checks are implemented with a custom DRF permission class `IsAdminRole` plus `IsAuthenticated` guards.
+- Authentication uses both session login and JWT token endpoints in the same API surface.
+- Response bodies are plain JSON dictionaries; there is no shared API response wrapper.
+- Error handling is mostly direct and local:
+  - `raise_exception=True` on serializer validation;
+  - ad hoc `Response(..., status=...)` in views;
+  - limited use of structured exception handling.
+- Backend settings use environment variables for secrets, hosts, and PostgreSQL connection values.
+- Current Python formatting is consistent with 4-space indentation and double-quoted strings in most handwritten files.
+- Frontend uses React 18 with Vite and react-router-dom.
+- Frontend conventions:
+  - functional components and hooks;
+  - `AuthContext` for auth state;
+  - route guards via `ProtectedRoute` and `RoleRoute`;
+  - Bootstrap utility classes for layout and styling.
+- Frontend JavaScript style is mostly single-quoted imports and props, with semicolons omitted.
+- Frontend API calls are centralized in `src/services/api.js`.
+- Frontend currently contains placeholder pages for role-specific routes that are not yet implemented.
+- Migration patterns:
+  - app migrations are committed for initial schema creation;
+  - users app includes a data migration that seeds base roles;
+  - finance app includes a follow-up migration for subscription updates and a unique active-subscription constraint.
+- Admin registrations are simple `admin.site.register(...)` calls, with a custom `UserAdmin` extension for extra fields.

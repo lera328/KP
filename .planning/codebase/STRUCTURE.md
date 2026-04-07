@@ -1,0 +1,43 @@
+# Structure
+
+- Root files:
+  - `docker-compose.yml` defines `db`, `backend`, and `frontend` services.
+  - `backend/` contains the Django project.
+  - `frontend/` contains the React app.
+  - `писанина/` contains documentation artifacts outside the runtime application.
+- Backend top-level files:
+  - `backend/manage.py` is the Django command entry point.
+  - `backend/requirements.txt` lists Python dependencies.
+  - `backend/Dockerfile` builds the backend container.
+- Backend project package:
+  - `backend/config/settings.py` holds settings, installed apps, database config, and DRF config.
+  - `backend/config/urls.py` wires admin, health, auth, courses, attendance, and finance routes.
+  - `backend/config/asgi.py` and `backend/config/wsgi.py` provide deployment entry points.
+- Backend app layout under `backend/apps/`:
+  - `core/` contains `views.py` for the health check.
+  - `users/` contains `models.py`, `serializers.py`, `views.py`, `urls.py`, `permissions.py`, and admin registration.
+  - `courses/` contains `models.py`, `serializers.py`, `views.py`, `urls.py`, and admin registration.
+  - `attendance/` contains `models.py`, `serializers.py`, `views.py`, `urls.py`, and admin registration.
+  - `finance/` contains `models.py`, `serializers.py`, `views.py`, `urls.py`, `services.py`, and admin registration.
+- Backend model layout:
+  - `users.models` defines `Role`, custom `User`, `StudentProfile`, and `ParentProfile`.
+  - `courses.models` defines `Course`, `Group`, `GroupStudent`, and `GroupTeacher`.
+  - `attendance.models` defines `LessonTopic`, `Lesson`, `AttendanceRecord`, and `MakeUpRequest`.
+  - `finance.models` defines `Subscription` and `Payment`.
+- Frontend top-level files:
+  - `frontend/index.html` is the Vite HTML shell.
+  - `frontend/vite.config.js` configures Vite.
+  - `frontend/package.json` defines the React/Vite scripts and dependencies.
+  - `frontend/Dockerfile` builds the frontend container.
+- Frontend source layout under `frontend/src/`:
+  - `main.jsx` mounts the app and imports Bootstrap CSS.
+  - `App.jsx` defines routing and role-based route groups.
+  - `context/AuthContext.jsx` stores auth state and auth actions.
+  - `services/api.js` wraps HTTP calls to the backend API.
+  - `components/Dashboard.jsx` renders the role-specific dashboard shell.
+  - `components/LoginForm.jsx` renders the login form.
+  - `components/ProtectedRoute.jsx` enforces authentication and role checks.
+- The current frontend component tree is shallow: components, context, and services are the only source subfolders.
+- The backend app tree is organized by domain, with one Django app per major business area.
+- There are migrations folders in `attendance/`, `courses/`, `finance/`, and `users/`; `core/` has no migrations.
+- The repository currently keeps application code, deployment config, and written documentation at the top level rather than in a separate monorepo tooling folder.
