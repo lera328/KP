@@ -18,6 +18,7 @@ class Role(models.Model):
 
 class User(AbstractUser):
     phone = models.CharField(max_length=20, blank=True)
+    telegram_chat_id = models.CharField(max_length=64, blank=True)
     roles = models.ManyToManyField(Role, related_name="users", blank=True)
 
 

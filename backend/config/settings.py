@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "apps.courses",
     "apps.attendance",
     "apps.finance",
+    "apps.notifications",
 ]
 
 MIDDLEWARE = [
@@ -84,3 +85,6 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
 }
+
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+PAYMENT_REMINDER_LESSON_THRESHOLD = int(os.getenv("PAYMENT_REMINDER_LESSON_THRESHOLD", "3"))

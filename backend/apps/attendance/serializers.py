@@ -2,6 +2,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.finance.services import charge_one_lesson
+from apps.notifications.services import notify_parents_about_absence, notify_parents_about_makeup_approval
 
 from .models import AttendanceRecord, Lesson, LessonTopic, MakeUpRequest
 
@@ -29,6 +30,9 @@ class AttendanceMarkSerializer(serializers.Serializer):
         student_id = self.validated_data["student_id"]
         status = self.validated_data["status"]
 
+        previous_record = AttendanceRecord.objects.filter(lesson=lesson, student_id=student_id).first()
+        previous_status = previous_record.status if previous_record else None
+
         record, _ = AttendanceRecord.objects.update_or_create(
             lesson=lesson,
             student_id=student_id,
@@ -45,6 +49,9 @@ class AttendanceMarkSerializer(serializers.Serializer):
             request_obj.completed_record = record
             request_obj.status = MakeUpRequest.Status.COMPLETED
             request_obj.save(update_fields=["completed_record", "status"])
+
+        if status == AttendanceRecord.Status.ABSENT and previous_status != AttendanceRecord.Status.ABSENT:
+            notify_parents_about_absence(record)
 
         return record
 
@@ -80,6 +87,8 @@ class MakeUpRequestCreateSerializer(serializers.Serializer):
 
 class MakeUpApproveSerializer(serializers.Serializer):
     def save(self, request_obj, admin_user):
+        old_status = request_obj.status
+
         if request_obj.status != MakeUpRequest.Status.COMPLETED:
             raise serializers.ValidationError("Сначала нужно зафиксировать факт отработки")
 
@@ -93,5 +102,8 @@ class MakeUpApproveSerializer(serializers.Serializer):
             if charge_one_lesson(request_obj.student_id):
                 completed.charged = True
                 completed.save(update_fields=["charged"])
+
+        if old_status != MakeUpRequest.Status.APPROVED:
+            notify_parents_about_makeup_approval(request_obj)
 
         return request_obj

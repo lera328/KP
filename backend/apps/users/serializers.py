@@ -11,7 +11,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "username", "first_name", "last_name", "email", "phone", "roles"]
+        fields = ["id", "username", "first_name", "last_name", "email", "phone", "telegram_chat_id", "roles"]
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -27,6 +27,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "last_name",
             "email",
             "phone",
+            "telegram_chat_id",
             "roles",
         ]
 

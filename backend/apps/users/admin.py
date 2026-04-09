@@ -6,7 +6,7 @@ from .models import ParentProfile, Role, StudentProfile, User
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
-    fieldsets = UserAdmin.fieldsets + (("Дополнительно", {"fields": ("phone", "roles")}),)
+    fieldsets = UserAdmin.fieldsets + (("Дополнительно", {"fields": ("phone", "telegram_chat_id", "roles")}),)
 
 
 admin.site.register(Role)
