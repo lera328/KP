@@ -17,6 +17,10 @@ class Lesson(models.Model):
     topic = models.ForeignKey(LessonTopic, on_delete=models.PROTECT, related_name="lessons")
     teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="taught_lessons")
     starts_at = models.DateTimeField()
+    is_extra = models.BooleanField(default=False)
+    is_makeup_slot = models.BooleanField(default=False)
+    conducted_topic = models.CharField(max_length=255, blank=True)
+    conducted_description = models.TextField(blank=True)
 
 
 class AttendanceRecord(models.Model):

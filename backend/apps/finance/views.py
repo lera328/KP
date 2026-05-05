@@ -2,16 +2,19 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.viewsets import ViewSet
+from rest_framework.exceptions import PermissionDenied
 
-from .models import Subscription, Payment
+from apps.users.models import Role
+
+from .models import Payment, PaymentIntent, Subscription
 from .serializers import (
-    SubscriptionSerializer,
+    PaymentIntentSerializer,
+    PaymentSerializer,
     SubscriptionDetailSerializer,
     SubscriptionListSerializer,
-    PaymentSerializer
+    SubscriptionSerializer,
 )
-from ..users.permissions import IsAdminRole
+from .services import AUTO_PROCESS_DELAY_SECONDS, PAYMENT_PLANS, process_pending_payment_intents
 
 
 class SubscriptionViewSet(viewsets.ModelViewSet):
@@ -21,6 +24,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Students see only their subscriptions; admins see all"""
+        process_pending_payment_intents()
         user = self.request.user
         if user.roles.filter(code="admin").exists() or user.is_superuser:
             return Subscription.objects.all()
@@ -88,6 +92,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Students see only their payments; admins see all"""
+        process_pending_payment_intents()
         user = self.request.user
         if user.roles.filter(code="admin").exists() or user.is_superuser:
             return Payment.objects.all()
@@ -116,6 +121,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def my_payments(self, request):
         """Get payment history for authenticated user"""
+        process_pending_payment_intents()
         user = request.user
         payments = Payment.objects.filter(subscription__student=user).order_by('-paid_at')
         
@@ -125,6 +131,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def balance(self, request):
         """Get remaining lesson balance for authenticated user"""
+        process_pending_payment_intents()
         user = request.user
         subscription = Subscription.objects.filter(student=user, is_active=True).first()
         
@@ -139,3 +146,121 @@ class PaymentViewSet(viewsets.ModelViewSet):
             "subscription_id": subscription.id,
             "total_lessons": subscription.total_lessons,
         })
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='plans')
+    def plans(self, request):
+        payload = [
+            {
+                "code": code,
+                "label": data["label"],
+                "amount": str(data["amount"]),
+                "lessons": data["lessons"],
+            }
+            for code, data in PAYMENT_PLANS.items()
+        ]
+        return Response(payload)
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='parent/initiate')
+    def parent_initiate(self, request):
+        user = request.user
+        if not user.roles.filter(code=Role.Code.PARENT).exists():
+            raise PermissionDenied("Только родитель может инициировать оплату")
+
+        student_id = request.data.get('student_id')
+        plan = request.data.get('plan')
+
+        if not student_id or not plan:
+            return Response({"error": "Нужно передать student_id и plan"}, status=status.HTTP_400_BAD_REQUEST)
+
+        plan_data = PAYMENT_PLANS.get(plan)
+        if not plan_data:
+            return Response({"error": "Недопустимый тариф"}, status=status.HTTP_400_BAD_REQUEST)
+
+        parent_profile = getattr(user, 'parent_profile', None)
+        if not parent_profile:
+            return Response({"error": "Профиль родителя не найден"}, status=status.HTTP_400_BAD_REQUEST)
+
+        student_ids = set(parent_profile.students.values_list('user_id', flat=True))
+        if int(student_id) not in student_ids:
+            return Response({"error": "Этот ученик не привязан к текущему родителю"}, status=status.HTTP_403_FORBIDDEN)
+
+        intent = PaymentIntent.objects.create(
+            student_id=int(student_id),
+            parent=user,
+            plan=plan,
+            amount=plan_data['amount'],
+            lessons=plan_data['lessons'],
+            status=PaymentIntent.Status.PENDING,
+        )
+
+        serializer = PaymentIntentSerializer(intent)
+        return Response(
+            {
+                "detail": f"Платеж создан и будет обработан автоматически через {AUTO_PROCESS_DELAY_SECONDS} сек.",
+                "intent": serializer.data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='parent/intents')
+    def parent_intents(self, request):
+        user = request.user
+        if not user.roles.filter(code=Role.Code.PARENT).exists():
+            raise PermissionDenied("Только родитель может просматривать платежи")
+
+        process_pending_payment_intents()
+
+        parent_profile = getattr(user, 'parent_profile', None)
+        if not parent_profile:
+            return Response([])
+
+        student_ids = list(parent_profile.students.values_list('user_id', flat=True))
+        intents = PaymentIntent.objects.filter(student_id__in=student_ids).order_by('-created_at')
+        serializer = PaymentIntentSerializer(intents, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='admin/intents')
+    def admin_intents(self, request):
+        user = request.user
+        if not (user.roles.filter(code=Role.Code.ADMIN).exists() or user.is_superuser):
+            raise PermissionDenied("Только администратор может просматривать все платежи")
+
+        process_pending_payment_intents()
+
+        intents = PaymentIntent.objects.all().order_by('-created_at')
+        serializer = PaymentIntentSerializer(intents, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='admin/create')
+    def admin_create(self, request):
+        user = request.user
+        if not (user.roles.filter(code=Role.Code.ADMIN).exists() or user.is_superuser):
+            raise PermissionDenied("Только администратор может создавать платежи")
+
+        student_id = request.data.get('student_id')
+        plan = request.data.get('plan')
+
+        if not student_id or not plan:
+            return Response(
+                {"error": "Нужно передать student_id и plan"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            from .services import create_admin_payment
+            intent = create_admin_payment(int(student_id), plan)
+            serializer = PaymentIntentSerializer(intent)
+            return Response(
+                {
+                    "detail": "Платеж успешно создан и обработан",
+                    "intent": serializer.data,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(
+                {"error": f"Ошибка при создании платежа: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

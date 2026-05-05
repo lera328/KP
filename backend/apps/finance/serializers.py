@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Subscription, Payment
+from .models import Payment, PaymentIntent, Subscription
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
@@ -47,10 +47,52 @@ class PaymentSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'paid_at']
 
 
+class PaymentIntentSerializer(serializers.ModelSerializer):
+    student_name = serializers.SerializerMethodField()
+    student_id = serializers.IntegerField(source='student.id', read_only=True)
+    parent_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PaymentIntent
+        fields = [
+            'id',
+            'student',
+            'student_id',
+            'student_name',
+            'parent',
+            'parent_name',
+            'plan',
+            'amount',
+            'lessons',
+            'status',
+            'processed_at',
+            'error_message',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = fields
+
+    def get_student_name(self, obj):
+        full_name = obj.student.get_full_name().strip()
+        return full_name or obj.student.username
+
+    def get_parent_name(self, obj):
+        if not obj.parent:
+            return None
+        full_name = obj.parent.get_full_name().strip()
+        return full_name or obj.parent.username
+
+
 class SubscriptionListSerializer(serializers.ModelSerializer):
     """Serializer for subscription list view"""
+    student = serializers.IntegerField(source='student_id', read_only=True)
+    student_name = serializers.SerializerMethodField()
+
+    def get_student_name(self, obj):
+        full_name = obj.student.get_full_name().strip()
+        return full_name or obj.student.username
     
     class Meta:
         model = Subscription
-        fields = ['id', 'total_lessons', 'remaining_lessons', 'is_active', 'created_at']
+        fields = ['id', 'student', 'student_name', 'total_lessons', 'remaining_lessons', 'is_active', 'created_at']
         read_only_fields = fields

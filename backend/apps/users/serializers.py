@@ -1,7 +1,8 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+from apps.courses.models import Group, GroupStudent
 
-from .models import ParentProfile, Role, StudentProfile
+from .models import ParentProfile, Role, StudentProfile, StudentProject
 
 User = get_user_model()
 
@@ -11,11 +12,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "username", "first_name", "last_name", "email", "phone", "telegram_chat_id", "roles"]
+        fields = ["id", "username", "first_name", "last_name", "email", "phone", "telegram_chat_id", "roles", "is_superuser"]
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
     roles = serializers.ListField(child=serializers.ChoiceField(choices=Role.Code.values), write_only=True)
+    group_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
     password = serializers.CharField(write_only=True, min_length=8)
 
     class Meta:
@@ -29,10 +31,31 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "phone",
             "telegram_chat_id",
             "roles",
+            "group_ids",
         ]
+
+    def validate(self, attrs):
+        role_codes = attrs.get("roles", [])
+        group_ids = attrs.get("group_ids", [])
+
+        if len(role_codes) != 1:
+            raise serializers.ValidationError({"roles": "У пользователя должна быть ровно одна роль."})
+
+        is_student = Role.Code.STUDENT in role_codes
+        if is_student:
+            if len(group_ids) != 1:
+                raise serializers.ValidationError({"group_ids": "Ученик должен быть прикреплен ровно к одной группе."})
+
+            existing_group_ids = set(Group.objects.filter(id__in=group_ids).values_list("id", flat=True))
+            missing_group_ids = [group_id for group_id in group_ids if group_id not in existing_group_ids]
+            if missing_group_ids:
+                raise serializers.ValidationError({"group_ids": "Некоторые группы не найдены."})
+
+        return attrs
 
     def create(self, validated_data):
         role_codes = validated_data.pop("roles", [])
+        group_ids = validated_data.pop("group_ids", [])
         password = validated_data.pop("password")
         user = User(**validated_data)
         user.set_password(password)
@@ -43,7 +66,129 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
         if any(role.code == Role.Code.STUDENT for role in roles):
             StudentProfile.objects.get_or_create(user=user)
+            GroupStudent.objects.get_or_create(group_id=group_ids[0], user=user)
         if any(role.code == Role.Code.PARENT for role in roles):
             ParentProfile.objects.get_or_create(user=user)
 
         return user
+
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    roles = serializers.ListField(
+        child=serializers.ChoiceField(choices=Role.Code.values),
+        write_only=True,
+        required=False,
+    )
+    group_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
+    password = serializers.CharField(write_only=True, min_length=8, required=False)
+
+    class Meta:
+        model = User
+        fields = [
+            "username",
+            "password",
+            "first_name",
+            "last_name",
+            "email",
+            "phone",
+            "telegram_chat_id",
+            "roles",
+            "group_ids",
+        ]
+        extra_kwargs = {
+            "username": {"required": False},
+            "first_name": {"required": False},
+            "last_name": {"required": False},
+            "email": {"required": False},
+            "phone": {"required": False},
+            "telegram_chat_id": {"required": False},
+        }
+
+    def validate(self, attrs):
+        role_codes = attrs.get("roles")
+        if role_codes is None:
+            role_codes = list(self.instance.roles.values_list("code", flat=True))
+
+        if len(role_codes) != 1:
+            raise serializers.ValidationError({"roles": "У пользователя должна быть ровно одна роль."})
+
+        is_student = Role.Code.STUDENT in role_codes
+        has_group_ids_in_payload = "group_ids" in attrs
+        group_ids = attrs.get("group_ids")
+
+        if group_ids is None:
+            group_ids = list(GroupStudent.objects.filter(user=self.instance).values_list("group_id", flat=True))
+
+        if is_student and len(group_ids) != 1:
+            raise serializers.ValidationError({"group_ids": "Ученик должен быть прикреплен ровно к одной группе."})
+
+        if has_group_ids_in_payload:
+            existing_group_ids = set(Group.objects.filter(id__in=group_ids).values_list("id", flat=True))
+            missing_group_ids = [group_id for group_id in group_ids if group_id not in existing_group_ids]
+            if missing_group_ids:
+                raise serializers.ValidationError({"group_ids": "Некоторые группы не найдены."})
+
+        return attrs
+
+    def update(self, instance, validated_data):
+        role_codes = validated_data.pop("roles", None)
+        group_ids = validated_data.pop("group_ids", None)
+        password = validated_data.pop("password", None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if password:
+            instance.set_password(password)
+
+        instance.save()
+
+        if role_codes is not None:
+            roles = list(Role.objects.filter(code__in=role_codes))
+            instance.roles.set(roles)
+
+        current_role_codes = list(instance.roles.values_list("code", flat=True))
+        is_student = Role.Code.STUDENT in current_role_codes
+        is_parent = Role.Code.PARENT in current_role_codes
+
+        if is_student:
+            StudentProfile.objects.get_or_create(user=instance)
+        if is_parent:
+            ParentProfile.objects.get_or_create(user=instance)
+
+        if group_ids is not None or role_codes is not None:
+            if is_student:
+                target_group_ids = group_ids
+                if target_group_ids is None:
+                    target_group_ids = list(
+                        GroupStudent.objects.filter(user=instance).values_list("group_id", flat=True)
+                    )
+
+                GroupStudent.objects.filter(user=instance).exclude(group_id__in=target_group_ids).delete()
+                GroupStudent.objects.get_or_create(group_id=target_group_ids[0], user=instance)
+            else:
+                GroupStudent.objects.filter(user=instance).delete()
+
+        return instance
+
+
+class StudentProjectSerializer(serializers.ModelSerializer):
+    student_id = serializers.IntegerField(source="student.id", read_only=True)
+    student_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StudentProject
+        fields = [
+            "id",
+            "student_id",
+            "student_name",
+            "title",
+            "description",
+            "project_url",
+            "created_at",
+        ]
+        read_only_fields = ["id", "student_id", "student_name", "created_at"]
+
+    def get_student_name(self, obj):
+        full_name = obj.student.get_full_name().strip()
+        return full_name or obj.student.username

@@ -2,7 +2,59 @@
  * API Service - handles all backend communication
  */
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+
+const normalizeErrorValue = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeErrorValue(item)).filter(Boolean).join(', ');
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.values(value)
+      .map((item) => normalizeErrorValue(item))
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return String(value);
+};
+
+const formatApiErrorMessage = (payload) => {
+  if (!payload) {
+    return 'Ошибка API';
+  }
+
+  if (typeof payload === 'string') {
+    return payload;
+  }
+
+  if (payload.detail) {
+    return normalizeErrorValue(payload.detail) || 'Ошибка API';
+  }
+
+  if (payload.error) {
+    return normalizeErrorValue(payload.error) || 'Ошибка API';
+  }
+
+  const entries = Object.entries(payload)
+    .map(([field, value]) => {
+      const normalized = normalizeErrorValue(value);
+      if (!normalized) return '';
+      if (field === 'non_field_errors') return normalized;
+      return `${field}: ${normalized}`;
+    })
+    .filter(Boolean);
+
+  if (entries.length > 0) {
+    return entries.join('; ');
+  }
+
+  return 'Ошибка API';
+};
 
 class APIService {
   constructor() {
@@ -48,18 +100,27 @@ class APIService {
     }
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.detail || error.error || 'API Error');
+      const errorPayload = await response.json().catch(() => null);
+      throw new Error(formatApiErrorMessage(errorPayload));
+    }
+
+    if (response.status === 204) {
+      return null;
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return null;
     }
 
     return response.json();
   }
 
   // Auth endpoints
-  async login(email, password) {
+  async login(identifier, password) {
     return this.request('/auth/session-login/', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email: identifier, password }),
     });
   }
 
@@ -71,6 +132,30 @@ class APIService {
     return this.request('/auth/profile/');
   }
 
+  async getParentChildren() {
+    return this.request('/auth/parent/children/');
+  }
+
+  async getParentAttendance(studentId = '') {
+    const query = studentId ? `?student_id=${studentId}` : '';
+    return this.request(`/auth/parent/attendance/${query}`);
+  }
+
+  async getParentBilling() {
+    return this.request('/auth/parent/billing/');
+  }
+
+  async getStudentProjects() {
+    return this.request('/auth/student/projects/');
+  }
+
+  async createStudentProject(payload) {
+    return this.request('/auth/student/projects/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   async refreshToken(refreshToken) {
     return this.request('/auth/token/refresh/', {
       method: 'POST',
@@ -79,10 +164,27 @@ class APIService {
   }
 
   // Users endpoints
+  async getUsers() {
+    return this.request('/auth/users/');
+  }
+
   async createUser(userData) {
     return this.request('/auth/users/', {
       method: 'POST',
       body: JSON.stringify(userData),
+    });
+  }
+
+  async updateUser(userId, userData) {
+    return this.request(`/auth/users/${userId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(userData),
+    });
+  }
+
+  async deleteUser(userId) {
+    return this.request(`/auth/users/${userId}/`, {
+      method: 'DELETE',
     });
   }
 
@@ -114,10 +216,66 @@ class APIService {
     return this.request('/lessons/');
   }
 
+  async getMyAttendance() {
+    return this.request('/attendance/my/');
+  }
+
+  async getLessonTopics() {
+    return this.request('/topics/');
+  }
+
+  async createLessonTopic(topicData) {
+    return this.request('/topics/', {
+      method: 'POST',
+      body: JSON.stringify(topicData),
+    });
+  }
+
   async createLesson(lessonData) {
     return this.request('/lessons/', {
       method: 'POST',
       body: JSON.stringify(lessonData),
+    });
+  }
+
+  async setupGroupSchedule(payload) {
+    return this.request('/lessons/setup-group-schedule/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async addExtraLesson(payload) {
+    return this.request('/lessons/add-extra/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateLesson(lessonId, lessonData) {
+    return this.request(`/lessons/${lessonId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(lessonData),
+    });
+  }
+
+  async deleteLesson(lessonId) {
+    return this.request(`/lessons/${lessonId}/`, {
+      method: 'DELETE',
+    });
+  }
+
+  async conductLesson(lessonId, payload) {
+    return this.request(`/lessons/${lessonId}/conduct/`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateMakeupSlots(lessonIds) {
+    return this.request('/lessons/makeup-slots/', {
+      method: 'POST',
+      body: JSON.stringify({ lesson_ids: lessonIds }),
     });
   }
 
@@ -170,10 +328,39 @@ class APIService {
     });
   }
 
+  async deactivateSubscription(subscriptionId) {
+    return this.request(`/finance/subscriptions/${subscriptionId}/deactivate/`, {
+      method: 'PATCH',
+      body: JSON.stringify({}),
+    });
+  }
+
   async createPayment(paymentData) {
     return this.request('/finance/payments/', {
       method: 'POST',
       body: JSON.stringify(paymentData),
+    });
+  }
+
+  async getPaymentPlans() {
+    return this.request('/finance/payments/plans/');
+  }
+
+  async initiateParentPayment(payload) {
+    return this.request('/finance/payments/parent/initiate/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getAdminPaymentIntents() {
+    return this.request('/finance/payments/admin/intents/');
+  }
+
+  async createAdminPayment(payload) {
+    return this.request('/finance/payments/admin/create/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   }
 }

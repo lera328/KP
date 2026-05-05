@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export const LoginForm = () => {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,10 +17,10 @@ export const LoginForm = () => {
     setLoading(true);
 
     try {
-      await login(email, password);
+      await login(identifier, password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message || 'Login failed. Please try again.');
+      setError(err.message || 'Не удалось войти. Попробуйте ещё раз.');
     } finally {
       setLoading(false);
     }
@@ -33,6 +33,9 @@ export const LoginForm = () => {
           <div className="card shadow">
             <div className="card-body">
               <h2 className="card-title text-center mb-4">KiberOne</h2>
+              <p className="text-muted text-center mb-4">
+                Вход выполняется по учетной записи, созданной администратором.
+              </p>
               
               {error && (
                 <div className="alert alert-danger" role="alert">
@@ -42,20 +45,20 @@ export const LoginForm = () => {
 
               <form onSubmit={handleSubmit}>
                 <div className="mb-3">
-                  <label htmlFor="email" className="form-label">Email</label>
+                  <label htmlFor="identifier" className="form-label">Эл. почта или имя пользователя</label>
                   <input
-                    type="email"
+                    type="text"
                     className="form-control"
-                    id="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="identifier"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
                     required
                     disabled={loading}
                   />
                 </div>
 
                 <div className="mb-3">
-                  <label htmlFor="password" className="form-label">Password</label>
+                  <label htmlFor="password" className="form-label">Пароль</label>
                   <input
                     type="password"
                     className="form-control"
@@ -72,7 +75,7 @@ export const LoginForm = () => {
                   className="btn btn-primary w-100"
                   disabled={loading}
                 >
-                  {loading ? 'Logging in...' : 'Login'}
+                  {loading ? 'Входим...' : 'Войти'}
                 </button>
               </form>
             </div>

@@ -9,7 +9,7 @@ export const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    return <div className="container text-center mt-5">Loading...</div>;
+    return <div className="container text-center mt-5">Загрузка...</div>;
   }
 
   if (!isAuthenticated) {
@@ -26,7 +26,7 @@ export const RoleRoute = ({ children, requiredRole }) => {
   const { isAuthenticated, loading, hasRole } = useAuth();
 
   if (loading) {
-    return <div className="container text-center mt-5">Loading...</div>;
+    return <div className="container text-center mt-5">Загрузка...</div>;
   }
 
   if (!isAuthenticated) {

@@ -1,3 +1,5 @@
+name: 'kiberone'
+
 services:
   db:
     image: postgres:14

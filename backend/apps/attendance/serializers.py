@@ -1,8 +1,11 @@
+from datetime import timedelta
 from django.utils import timezone
 from rest_framework import serializers
 
 from apps.finance.services import charge_one_lesson
 from apps.notifications.services import notify_parents_about_absence, notify_parents_about_makeup_approval
+from apps.courses.models import Group
+from apps.users.models import User
 
 from .models import AttendanceRecord, Lesson, LessonTopic, MakeUpRequest
 
@@ -14,9 +17,150 @@ class LessonTopicSerializer(serializers.ModelSerializer):
 
 
 class LessonSerializer(serializers.ModelSerializer):
+    attendance_records = serializers.SerializerMethodField()
+
     class Meta:
         model = Lesson
-        fields = ["id", "group", "topic", "teacher", "starts_at"]
+        fields = [
+            "id",
+            "group",
+            "topic",
+            "teacher",
+            "starts_at",
+            "is_extra",
+            "is_makeup_slot",
+            "conducted_topic",
+            "conducted_description",
+            "attendance_records",
+        ]
+
+    def get_attendance_records(self, obj):
+        records = obj.attendance_records.all().values("student_id", "status")
+        return list(records)
+
+
+class GroupScheduleSetupSerializer(serializers.Serializer):
+    group_id = serializers.IntegerField()
+    teacher_id = serializers.IntegerField()
+    starts_at = serializers.DateTimeField()
+
+    def validate(self, attrs):
+        group = Group.objects.filter(id=attrs["group_id"]).first()
+        teacher = User.objects.filter(id=attrs["teacher_id"]).first()
+
+        if not group:
+            raise serializers.ValidationError("Группа не найдена")
+        if not teacher:
+            raise serializers.ValidationError("Преподаватель не найден")
+
+        starts_at_local = timezone.localtime(attrs["starts_at"])
+
+        if group.weekly_lesson_weekday is not None and group.weekly_lesson_time is not None:
+            existing_weekday = int(group.weekly_lesson_weekday)
+            existing_time = group.weekly_lesson_time
+            if (
+                existing_weekday != starts_at_local.weekday()
+                or existing_time.hour != starts_at_local.hour
+                or existing_time.minute != starts_at_local.minute
+            ):
+                raise serializers.ValidationError(
+                    "У группы уже зафиксирован другой стабильный слот. Изменение времени недоступно."
+                )
+
+        attrs["group"] = group
+        attrs["teacher"] = teacher
+        attrs["starts_at_local"] = starts_at_local
+        return attrs
+
+
+class ExtraLessonCreateSerializer(serializers.Serializer):
+    group_id = serializers.IntegerField()
+    teacher_id = serializers.IntegerField()
+    starts_at = serializers.DateTimeField()
+
+    def validate(self, attrs):
+        group = Group.objects.filter(id=attrs["group_id"]).first()
+        teacher = User.objects.filter(id=attrs["teacher_id"]).first()
+
+        if not group:
+            raise serializers.ValidationError("Группа не найдена")
+        if not teacher:
+            raise serializers.ValidationError("Преподаватель не найден")
+
+        starts_at = attrs["starts_at"]
+        starts_at_local = timezone.localtime(starts_at)
+
+        if Lesson.objects.filter(group=group, starts_at=starts_at).exists():
+            raise serializers.ValidationError("У этой группы уже есть занятие в этот слот")
+
+        if Lesson.objects.filter(teacher=teacher, starts_at=starts_at).exists():
+            raise serializers.ValidationError("У преподавателя уже есть занятие в этот слот")
+
+        if group.weekly_lesson_weekday is not None and group.weekly_lesson_time is not None:
+            same_weekday = int(group.weekly_lesson_weekday) == starts_at_local.weekday()
+            same_time = (
+                group.weekly_lesson_time.hour == starts_at_local.hour
+                and group.weekly_lesson_time.minute == starts_at_local.minute
+            )
+            if same_weekday and same_time:
+                raise serializers.ValidationError("Этот слот уже занят регулярным занятием группы")
+
+        attrs["group"] = group
+        attrs["teacher"] = teacher
+        return attrs
+
+
+class LessonConductSerializer(serializers.Serializer):
+    topic = serializers.CharField(max_length=255, allow_blank=True, required=False)
+    description = serializers.CharField(allow_blank=True, required=False)
+    attendance = serializers.ListField(child=serializers.DictField(), allow_empty=False)
+
+    def validate_attendance(self, value):
+        validated = []
+        for row in value:
+            student_id = row.get("student_id")
+            status = row.get("status")
+
+            if not student_id or not status:
+                raise serializers.ValidationError("Для каждой записи нужны student_id и status")
+
+            if status not in AttendanceRecord.Status.values:
+                raise serializers.ValidationError("Недопустимый статус посещаемости")
+
+            validated.append({"student_id": int(student_id), "status": status})
+
+        return validated
+
+    def save(self, **kwargs):
+        lesson = self.context["lesson"]
+        topic = self.validated_data.get("topic", "").strip()
+        description = self.validated_data.get("description", "").strip()
+
+        lesson.conducted_topic = topic
+        lesson.conducted_description = description
+        lesson.save(update_fields=["conducted_topic", "conducted_description"])
+
+        results = []
+        for row in self.validated_data["attendance"]:
+            mark_serializer = AttendanceMarkSerializer(
+                data={
+                    "lesson_id": lesson.id,
+                    "student_id": row["student_id"],
+                    "status": row["status"],
+                }
+            )
+            mark_serializer.is_valid(raise_exception=True)
+            record = mark_serializer.save()
+            results.append(
+                {
+                    "id": record.id,
+                    "student_id": record.student_id,
+                    "status": record.status,
+                    "charged": record.charged,
+                }
+            )
+
+        return {"lesson_id": lesson.id, "attendance": results}
 
 
 class AttendanceMarkSerializer(serializers.Serializer):

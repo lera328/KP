@@ -30,17 +30,19 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (identifier, password) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.login(email, password);
-      if (response.access) {
-        api.setToken(response.access);
-        const profile = await api.getProfile();
-        setUser(profile);
-        return profile;
+      const response = await api.login(identifier, password);
+      if (!response?.access) {
+        throw new Error('Сервер не вернул токен доступа');
       }
+
+      api.setToken(response.access);
+      const profile = await api.getProfile();
+      setUser(profile);
+      return profile;
     } catch (err) {
       setError(err.message);
       throw err;
@@ -62,7 +64,10 @@ export const AuthProvider = ({ children }) => {
 
   const hasRole = (roleCode) => {
     if (!user) return false;
-    return user.roles?.some(role => role.code === roleCode) || user.is_superuser;
+    return (
+      user.is_superuser ||
+      user.roles?.some((role) => (typeof role === 'string' ? role === roleCode : role?.code === roleCode))
+    );
   };
 
   const value = {

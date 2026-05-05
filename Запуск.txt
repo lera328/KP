@@ -1,0 +1,4 @@
+cd d:\КП
+docker compose up -d --build
+docker compose ps
+docker compose logs --tail=100 frontend

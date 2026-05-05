@@ -41,3 +41,35 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"Payment #{self.id}"
+
+
+class PaymentIntent(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Ожидает"
+        PAID = "paid", "Оплачен"
+        FAILED = "failed", "Ошибка"
+
+    class Plan(models.TextChoices):
+        MONTH = "month", "1 месяц"
+        HALF_YEAR = "half_year", "6 месяцев"
+        YEAR = "year", "12 месяцев"
+
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="payment_intents")
+    parent = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_payment_intents",
+    )
+    plan = models.CharField(max_length=16, choices=Plan.choices)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    lessons = models.PositiveIntegerField()
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    error_message = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"PaymentIntent #{self.id} ({self.student_id})"

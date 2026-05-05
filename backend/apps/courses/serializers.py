@@ -15,10 +15,47 @@ class CourseSerializer(serializers.ModelSerializer):
 class GroupSerializer(serializers.ModelSerializer):
     student_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
     teacher_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
+    students = serializers.SerializerMethodField(read_only=True)
+    teachers = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Group
-        fields = ["id", "name", "course", "is_active", "student_ids", "teacher_ids"]
+        fields = [
+            "id",
+            "name",
+            "course",
+            "is_active",
+            "weekly_lesson_weekday",
+            "weekly_lesson_time",
+            "student_ids",
+            "teacher_ids",
+            "students",
+            "teachers",
+        ]
+
+    def get_students(self, obj):
+        students = obj.students.all().order_by("id")
+        return [
+            {
+                "id": student.id,
+                "username": student.username,
+                "first_name": student.first_name,
+                "last_name": student.last_name,
+            }
+            for student in students
+        ]
+
+    def get_teachers(self, obj):
+        teachers = obj.teachers.all().order_by("id")
+        return [
+            {
+                "id": teacher.id,
+                "username": teacher.username,
+                "first_name": teacher.first_name,
+                "last_name": teacher.last_name,
+            }
+            for teacher in teachers
+        ]
 
     def create(self, validated_data):
         student_ids = validated_data.pop("student_ids", [])
