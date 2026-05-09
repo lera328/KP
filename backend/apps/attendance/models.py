@@ -21,6 +21,7 @@ class Lesson(models.Model):
     is_makeup_slot = models.BooleanField(default=False)
     conducted_topic = models.CharField(max_length=255, blank=True)
     conducted_description = models.TextField(blank=True)
+    homework = models.TextField(blank=True)
 
 
 class AttendanceRecord(models.Model):
@@ -33,6 +34,8 @@ class AttendanceRecord(models.Model):
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="attendance_records")
     status = models.CharField(max_length=16, choices=Status.choices)
     charged = models.BooleanField(default=False)
+    grade = models.PositiveSmallIntegerField(null=True, blank=True)
+    teacher_comment = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

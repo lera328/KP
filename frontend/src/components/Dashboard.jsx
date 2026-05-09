@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { TeacherSchedule } from './TeacherSchedule';
 import { StudentSchedule } from './StudentSchedule';
 import { AdminLayout } from './AdminLayout';
+import { AppLayout, parentNavItems, studentNavItems } from './AppLayout';
+import { AdminScheduleOverview } from './AdminScheduleOverview';
 
 /**
  * Main Dashboard - routes to role-specific dashboard
@@ -65,32 +67,12 @@ const TeacherDashboard = () => {
  * Parent Dashboard
  */
 const ParentDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
-
   return (
-    <div>
-      <nav className="navbar navbar-expand-lg navbar-dark bg-success">
-        <div className="container-fluid">
-          <span className="navbar-brand">KiberOne — Родитель</span>
-          <div className="ms-auto">
-            <span className="text-white me-3">{user?.email}</span>
-            <button
-              className="btn btn-outline-light btn-sm"
-              onClick={handleLogout}
-            >
-              Выйти
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      <div className="container-fluid mt-4">
+    <AppLayout title="KiberOne — Родитель" navItems={parentNavItems}>
+      <div>
         <h1>Панель родителя</h1>
         <p>Добро пожаловать, {user?.first_name || 'Родитель'}!</p>
 
@@ -129,7 +111,7 @@ const ParentDashboard = () => {
             <div className="card">
               <div className="card-body">
                 <h5 className="card-title">Оплата</h5>
-                <p className="card-text">Просмотр абонементов и платежей</p>
+                <p className="card-text">Просмотр баланса занятий и платежей</p>
                 <button
                   className="btn btn-primary btn-sm"
                   onClick={() => navigate('/parent/billing')}
@@ -139,9 +121,21 @@ const ParentDashboard = () => {
               </div>
             </div>
           </div>
+
+          <div className="col-md-4">
+            <div className="card">
+              <div className="card-body">
+                <h5 className="card-title">Лента проектов</h5>
+                <p className="card-text">Лучшие работы учеников</p>
+                <button className="btn btn-primary btn-sm" onClick={() => navigate('/projects')}>
+                  Открыть
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 };
 
@@ -149,64 +143,24 @@ const ParentDashboard = () => {
  * Student Dashboard
  */
 const StudentDashboard = () => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
+  const { user } = useAuth();
 
   return (
-    <div>
-      <nav className="navbar navbar-expand-lg navbar-dark bg-warning">
-        <div className="container-fluid">
-          <span className="navbar-brand">KiberOne — Ученик</span>
-          <div className="ms-auto">
-            <span className="text-dark me-3">{user?.email}</span>
-            <button
-              className="btn btn-outline-dark btn-sm"
-              onClick={handleLogout}
-            >
-              Выйти
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      <div className="container-fluid mt-4">
+    <AppLayout title="KiberOne — Ученик" navItems={studentNavItems}>
+      <div>
         <h1>Панель ученика</h1>
         <p>Добро пожаловать, {user?.first_name || 'Ученик'}!</p>
 
-        <div className="row mt-3 g-3">
-          <div className="col-md-3 col-lg-2">
-            <div className="card">
-              <div className="card-header">
-                <strong>Разделы</strong>
-              </div>
-              <div className="list-group list-group-flush">
-                <button className="list-group-item list-group-item-action" onClick={() => navigate('/student/attendance')}>
-                  Посещаемость
-                </button>
-                <button className="list-group-item list-group-item-action" onClick={() => navigate('/student/projects')}>
-                  Портфолио и проекты
-                </button>
-              </div>
-            </div>
+        <div className="card mt-3">
+          <div className="card-header">
+            <strong>📅 Расписание</strong>
           </div>
-          <div className="col-md-9 col-lg-10">
-            <div className="card">
-              <div className="card-header">
-                <strong>📅 Расписание</strong>
-              </div>
-              <div className="card-body">
-                <StudentSchedule />
-              </div>
-            </div>
+          <div className="card-body">
+            <StudentSchedule />
           </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 };
 

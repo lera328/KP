@@ -13,11 +13,15 @@ import { AdminSchedule } from './components/AdminSchedule';
 import { ParentChildren } from './components/ParentChildren';
 import { ParentAttendance } from './components/ParentAttendance';
 import { ParentBilling } from './components/ParentBilling';
+import { ProjectsFeed } from './components/ProjectsFeed';
 import { StudentAttendance } from './components/StudentAttendance';
 import { StudentProjects } from './components/StudentProjects';
 import { StudentBalance } from './components/StudentBalance';
 import { AdminFinance } from './components/AdminFinance';
 import { AdminGroups } from './components/AdminGroups';
+import { AdminNotifications } from './components/AdminNotifications';
+import { AdminMakeups } from './components/AdminMakeups';
+import { AdminCourses } from './components/AdminCourses';
 
 /**
  * Main App - sets up routing and auth context
@@ -54,6 +58,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/projects"
+        element={
+          <ProtectedRoute>
+            <ProjectsFeed />
           </ProtectedRoute>
         }
       />
@@ -117,9 +130,11 @@ function AdminRoutes() {
       <Route path="/" element={<AdminDashboard />} />
       <Route path="users" element={<AdminUsers />} />
       <Route path="groups" element={<AdminGroups />} />
-      <Route path="courses" element={<Navigate to="/admin/groups" replace />} />
+      <Route path="courses" element={<AdminCourses />} />
       <Route path="finance" element={<AdminFinance />} />
       <Route path="attendance" element={<AdminAttendance />} />
+      <Route path="makeups" element={<AdminMakeups />} />
+      <Route path="notifications" element={<AdminNotifications />} />
     </Routes>
   );
 }

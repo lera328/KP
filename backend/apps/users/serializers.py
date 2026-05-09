@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from apps.courses.models import Group, GroupStudent
 
-from .models import ParentProfile, Role, StudentProfile, StudentProject
+from .models import ParentProfile, Role, StudentProfile, StudentProject, StudentProjectImage, StudentProjectLike
 
 User = get_user_model()
 
@@ -175,6 +175,10 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 class StudentProjectSerializer(serializers.ModelSerializer):
     student_id = serializers.IntegerField(source="student.id", read_only=True)
     student_name = serializers.SerializerMethodField()
+    images = serializers.SerializerMethodField()
+    likes_count = serializers.SerializerMethodField()
+    likes_week = serializers.SerializerMethodField()
+    liked_by_me = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentProject
@@ -185,10 +189,54 @@ class StudentProjectSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "project_url",
+            "images",
+            "likes_count",
+            "likes_week",
+            "liked_by_me",
             "created_at",
         ]
-        read_only_fields = ["id", "student_id", "student_name", "created_at"]
+        read_only_fields = [
+            "id",
+            "student_id",
+            "student_name",
+            "images",
+            "likes_count",
+            "likes_week",
+            "liked_by_me",
+            "created_at",
+        ]
 
     def get_student_name(self, obj):
         full_name = obj.student.get_full_name().strip()
         return full_name or obj.student.username
+
+    def get_images(self, obj):
+        request = self.context.get("request")
+        images = getattr(obj, "images", None)
+        if images is None:
+            images = StudentProjectImage.objects.filter(project=obj)
+
+        payload = []
+        for image in images.all():
+            url = image.image.url if image.image else ""
+            if request and url:
+                url = request.build_absolute_uri(url)
+            payload.append({"id": image.id, "url": url})
+        return payload
+
+    def get_likes_count(self, obj):
+        return getattr(obj, "likes_total", None) or StudentProjectLike.objects.filter(project=obj).count()
+
+    def get_likes_week(self, obj):
+        if hasattr(obj, "likes_week"):
+            return obj.likes_week
+        week_start = self.context.get("like_week_start")
+        if week_start is None:
+            return 0
+        return StudentProjectLike.objects.filter(project=obj, created_at__gte=week_start).count()
+
+    def get_liked_by_me(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user or not request.user.is_authenticated:
+            return False
+        return StudentProjectLike.objects.filter(project=obj, user=request.user).exists()

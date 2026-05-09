@@ -87,10 +87,48 @@ class APIService {
     return headers;
   }
 
+  getMultipartHeaders() {
+    const headers = {};
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+    return headers;
+  }
+
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
     const response = await fetch(url, {
       headers: this.getHeaders(),
+      ...options,
+    });
+
+    if (response.status === 401) {
+      this.clearToken();
+      window.location.href = '/login';
+    }
+
+    if (!response.ok) {
+      const errorPayload = await response.json().catch(() => null);
+      throw new Error(formatApiErrorMessage(errorPayload));
+    }
+
+    if (response.status === 204) {
+      return null;
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return null;
+    }
+
+    return response.json();
+  }
+
+  async requestFormData(endpoint, formData, options = {}) {
+    const url = `${this.baseURL}${endpoint}`;
+    const response = await fetch(url, {
+      headers: this.getMultipartHeaders(),
+      body: formData,
       ...options,
     });
 
@@ -145,14 +183,38 @@ class APIService {
     return this.request('/auth/parent/billing/');
   }
 
+  async getProjectsFeed() {
+    return this.request('/auth/projects/feed/');
+  }
+
+  async likeProject(projectId) {
+    return this.request(`/auth/projects/${projectId}/like/`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
+  async unlikeProject(projectId) {
+    return this.request(`/auth/projects/${projectId}/like/`, {
+      method: 'DELETE',
+    });
+  }
+
   async getStudentProjects() {
     return this.request('/auth/student/projects/');
   }
 
   async createStudentProject(payload) {
-    return this.request('/auth/student/projects/', {
+    const formData = new FormData();
+    formData.append('title', payload.title || '');
+    formData.append('description', payload.description || '');
+    formData.append('project_url', payload.project_url || '');
+    (payload.photos || []).forEach((file) => {
+      formData.append('photos', file);
+    });
+
+    return this.requestFormData('/auth/student/projects/', formData, {
       method: 'POST',
-      body: JSON.stringify(payload),
     });
   }
 
@@ -197,6 +259,19 @@ class APIService {
     return this.request('/courses/', {
       method: 'POST',
       body: JSON.stringify(courseData),
+    });
+  }
+
+  async updateCourse(courseId, courseData) {
+    return this.request(`/courses/${courseId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(courseData),
+    });
+  }
+
+  async deleteCourse(courseId) {
+    return this.request(`/courses/${courseId}/`, {
+      method: 'DELETE',
     });
   }
 
@@ -279,6 +354,10 @@ class APIService {
     });
   }
 
+  async getTeacherSalary() {
+    return this.request('/teacher/salary/');
+  }
+
   async markAttendance(attendanceData) {
     return this.request('/attendance/mark/', {
       method: 'POST',
@@ -291,6 +370,22 @@ class APIService {
       method: 'POST',
       body: JSON.stringify(makeupData),
     });
+  }
+
+  async suggestMakeupSlots(absenceRecordId) {
+    return this.request(`/makeups/suggest/?absence_record_id=${encodeURIComponent(absenceRecordId)}`);
+  }
+
+  async getMyMakeups() {
+    return this.request('/makeups/my/');
+  }
+
+  async getParentMakeups() {
+    return this.request('/makeups/parent/');
+  }
+
+  async getAdminMakeups() {
+    return this.request('/makeups/admin/');
   }
 
   async approveMakeup(makeupId, approvalData) {
@@ -351,6 +446,17 @@ class APIService {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+  }
+
+  async sendPaymentReminders(payload = {}) {
+    return this.request('/notifications/payment-reminders/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getNotificationEvents() {
+    return this.request('/notifications/events/');
   }
 
   async getAdminPaymentIntents() {

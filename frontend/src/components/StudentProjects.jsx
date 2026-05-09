@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { AppLayout, studentNavItems } from './AppLayout';
 import { useAuth } from '../context/AuthContext';
 
 const formatDateTime = (value) => {
@@ -9,13 +9,13 @@ const formatDateTime = (value) => {
 };
 
 export const StudentProjects = () => {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const [projects, setProjects] = useState([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [projectUrl, setProjectUrl] = useState('');
+  const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -38,11 +38,6 @@ export const StudentProjects = () => {
     loadProjects();
   }, []);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
-
   const handleSubmit = async (event) => {
     event.preventDefault();
     setSaving(true);
@@ -50,15 +45,23 @@ export const StudentProjects = () => {
     setSuccess('');
 
     try {
+      if (photos.length < 1 || photos.length > 5) {
+        setError('Нужно добавить от 1 до 5 фото.');
+        setSaving(false);
+        return;
+      }
+
       await api.createStudentProject({
         title: title.trim(),
         description: description.trim(),
         project_url: projectUrl.trim(),
+        photos,
       });
       setSuccess('Проект добавлен в портфолио.');
       setTitle('');
       setDescription('');
       setProjectUrl('');
+      setPhotos([]);
       await loadProjects();
     } catch (saveError) {
       setError(saveError.message || 'Не удалось добавить проект.');
@@ -68,23 +71,8 @@ export const StudentProjects = () => {
   };
 
   return (
-    <div>
-      <nav className="navbar navbar-expand-lg navbar-dark bg-warning">
-        <div className="container-fluid">
-          <button className="btn btn-outline-dark btn-sm me-2" onClick={() => navigate('/student')}>
-            Назад
-          </button>
-          <span className="navbar-brand text-dark">Ученик — Портфолио и проекты</span>
-          <div className="ms-auto">
-            <span className="text-dark me-3">{user?.email}</span>
-            <button className="btn btn-outline-dark btn-sm" onClick={handleLogout}>
-              Выйти
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      <div className="container-fluid mt-4">
+    <AppLayout title="KiberOne — Ученик" navItems={studentNavItems}>
+      <div>
         {error && <div className="alert alert-danger">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
 
@@ -127,6 +115,20 @@ export const StudentProjects = () => {
                       disabled={saving}
                     />
                   </div>
+                  <div className="mb-3">
+                    <label className="form-label">Фото проекта (1-5)</label>
+                    <input
+                      className="form-control"
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={(e) => setPhotos(Array.from(e.target.files || []))}
+                      disabled={saving}
+                    />
+                    {photos.length > 0 && (
+                      <div className="form-text">Выбрано фото: {photos.length}</div>
+                    )}
+                  </div>
                   <button className="btn btn-primary btn-sm" type="submit" disabled={saving || !title.trim()}>
                     {saving ? 'Сохранение...' : 'Добавить'}
                   </button>
@@ -163,6 +165,18 @@ export const StudentProjects = () => {
                                 </a>
                               </div>
                             )}
+                            {Array.isArray(project.images) && project.images.length > 0 && (
+                              <div className="mt-2 d-flex flex-wrap gap-2">
+                                {project.images.map((image) => (
+                                  <img
+                                    key={image.id}
+                                    src={image.url}
+                                    alt=""
+                                    style={{ width: 96, height: 72, objectFit: 'cover', borderRadius: 6 }}
+                                  />
+                                ))}
+                              </div>
+                            )}
                           </div>
                           <div className="text-muted small">{formatDateTime(project.created_at)}</div>
                         </div>
@@ -175,6 +189,6 @@ export const StudentProjects = () => {
           </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 };

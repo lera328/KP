@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import api from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { AppLayout, teacherNavItems } from './AppLayout';
 
 const STATUS_OPTIONS = [
   { value: 'present', label: 'Присутствовал' },
@@ -10,9 +10,7 @@ const STATUS_OPTIONS = [
 ];
 
 export const TeacherAttendance = () => {
-  const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
   const preselectedGroupId = location.state?.preselectedGroupId ? String(location.state.preselectedGroupId) : '';
 
   const [groups, setGroups] = useState([]);
@@ -91,11 +89,6 @@ export const TeacherAttendance = () => {
     [groupLessons, form.lessonId],
   );
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
-
   const setField = (name, value) => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
@@ -155,23 +148,8 @@ export const TeacherAttendance = () => {
   };
 
   return (
-    <div>
-      <nav className="navbar navbar-expand-lg navbar-dark bg-info">
-        <div className="container-fluid">
-          <button className="btn btn-outline-light btn-sm me-2" onClick={() => navigate('/teacher')}>
-            Назад
-          </button>
-          <span className="navbar-brand">Отметка посещаемости</span>
-          <div className="ms-auto">
-            <span className="text-white me-3">{user?.email}</span>
-            <button className="btn btn-outline-light btn-sm" onClick={handleLogout}>
-              Выйти
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      <div className="container-fluid mt-4">
+    <AppLayout title="KiberOne — Преподаватель" navItems={teacherNavItems}>
+      <div>
         {error && <div className="alert alert-danger">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
 
@@ -318,6 +296,6 @@ export const TeacherAttendance = () => {
           </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 };

@@ -73,6 +73,9 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "users.User"
 
@@ -87,3 +90,4 @@ REST_FRAMEWORK = {
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 PAYMENT_REMINDER_LESSON_THRESHOLD = int(os.getenv("PAYMENT_REMINDER_LESSON_THRESHOLD", "3"))
+TEACHER_RATE_PER_LESSON = int(os.getenv("TEACHER_RATE_PER_LESSON", "1500"))

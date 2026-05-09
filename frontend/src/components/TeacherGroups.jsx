@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { AppLayout, teacherNavItems } from './AppLayout';
 
 export const TeacherGroups = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
-
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -28,29 +26,9 @@ export const TeacherGroups = () => {
     loadGroups();
   }, []);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
-
   return (
-    <div>
-      <nav className="navbar navbar-expand-lg navbar-dark bg-info">
-        <div className="container-fluid">
-          <button className="btn btn-outline-light btn-sm me-2" onClick={() => navigate('/teacher')}>
-            Назад
-          </button>
-          <span className="navbar-brand">Мои группы</span>
-          <div className="ms-auto">
-            <span className="text-white me-3">{user?.email}</span>
-            <button className="btn btn-outline-light btn-sm" onClick={handleLogout}>
-              Выйти
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      <div className="container-fluid mt-4">
+    <AppLayout title="KiberOne — Преподаватель" navItems={teacherNavItems}>
+      <div>
         {error && <div className="alert alert-danger">{error}</div>}
 
         <div className="card">
@@ -114,6 +92,6 @@ export const TeacherGroups = () => {
           </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 };

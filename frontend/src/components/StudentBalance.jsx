@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { AppLayout, studentNavItems } from './AppLayout';
 import { useAuth } from '../context/AuthContext';
 
 const formatDateTime = (value) => {
@@ -9,8 +9,7 @@ const formatDateTime = (value) => {
 };
 
 export const StudentBalance = () => {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const [balance, setBalance] = useState(null);
   const [subscription, setSubscription] = useState(null);
@@ -43,29 +42,9 @@ export const StudentBalance = () => {
     loadData();
   }, []);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
-
   return (
-    <div>
-      <nav className="navbar navbar-expand-lg navbar-dark bg-warning">
-        <div className="container-fluid">
-          <button className="btn btn-outline-dark btn-sm me-2" onClick={() => navigate('/student')}>
-            Назад
-          </button>
-          <span className="navbar-brand text-dark">Ученик — Баланс занятий</span>
-          <div className="ms-auto">
-            <span className="text-dark me-3">{user?.email}</span>
-            <button className="btn btn-outline-dark btn-sm" onClick={handleLogout}>
-              Выйти
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      <div className="container-fluid mt-4">
+    <AppLayout title="KiberOne — Ученик" navItems={studentNavItems}>
+      <div>
         {error && <div className="alert alert-danger">{error}</div>}
 
         <div className="row g-4">
@@ -86,7 +65,7 @@ export const StudentBalance = () => {
                     <div className="text-muted">Осталось занятий</div>
                     {subscription && (
                       <div className="mt-3 small text-muted">
-                        Всего по абонементу: {subscription.total_lessons}
+                        Всего по пакету занятий: {subscription.total_lessons}
                       </div>
                     )}
                   </>
@@ -132,6 +111,6 @@ export const StudentBalance = () => {
           </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 };

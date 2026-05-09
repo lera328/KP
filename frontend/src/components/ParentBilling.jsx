@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { AppLayout, parentNavItems } from './AppLayout';
 
 const LOW_BALANCE_THRESHOLD = 3;
 
@@ -17,13 +16,8 @@ const formatDateTime = (value) => {
 };
 
 export const ParentBilling = () => {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
-
   const [billingData, setBillingData] = useState([]);
-  const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [processingStudentId, setProcessingStudentId] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -39,9 +33,8 @@ export const ParentBilling = () => {
     setLoading(true);
     setError('');
     try {
-      const [billingResponse, plansResponse] = await Promise.all([api.getParentBilling(), api.getPaymentPlans()]);
+      const billingResponse = await api.getParentBilling();
       setBillingData(Array.isArray(billingResponse) ? billingResponse : []);
-      setPlans(Array.isArray(plansResponse) ? plansResponse : []);
     } catch (loadError) {
       setError(loadError.message || 'Не удалось загрузить данные по оплатам.');
     } finally {
@@ -65,47 +58,10 @@ export const ParentBilling = () => {
     return () => clearInterval(timer);
   }, [hasPendingIntent]);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
-
-  const handleInitiatePayment = async (studentId, planCode) => {
-    setError('');
-    setSuccess('');
-    setProcessingStudentId(studentId);
-    try {
-      const response = await api.initiateParentPayment({
-        student_id: studentId,
-        plan: planCode,
-      });
-      setSuccess(response?.detail || 'Платеж создан и обрабатывается автоматически.');
-      await loadBilling();
-    } catch (paymentError) {
-      setError(paymentError.message || 'Не удалось инициировать оплату.');
-    } finally {
-      setProcessingStudentId(null);
-    }
-  };
 
   return (
-    <div>
-      <nav className="navbar navbar-expand-lg navbar-dark bg-success">
-        <div className="container-fluid">
-          <button className="btn btn-outline-light btn-sm me-2" onClick={() => navigate('/parent')}>
-            Назад
-          </button>
-          <span className="navbar-brand">Родитель — Оплата и абонементы</span>
-          <div className="ms-auto">
-            <span className="text-white me-3">{user?.email}</span>
-            <button className="btn btn-outline-light btn-sm" onClick={handleLogout}>
-              Выйти
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      <div className="container-fluid mt-4">
+    <AppLayout title="KiberOne — Родитель" navItems={parentNavItems}>
+      <div>
         {error && <div className="alert alert-danger">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
 
@@ -127,7 +83,6 @@ export const ParentBilling = () => {
                   const remainingLessons = Number(item.subscription?.remaining_lessons ?? 0);
                   const isLowBalance = Boolean(item.subscription?.is_active) && remainingLessons < LOW_BALANCE_THRESHOLD;
                   const latestIntent = Array.isArray(item.payment_intents) ? item.payment_intents[0] : null;
-                  const isPending = latestIntent?.status === 'pending';
 
                   return (
                     <div className="col-12" key={item.student_id}>
@@ -138,8 +93,8 @@ export const ParentBilling = () => {
                             {item.subscription?.is_active
                               ? isLowBalance
                                 ? 'Низкий остаток'
-                                : 'Активный абонемент'
-                              : 'Нет активного абонемента'}
+                                : 'Активный пакет занятий'
+                              : 'Нет активного пакета занятий'}
                           </span>
                         </div>
                         <div className="card-body">
@@ -149,31 +104,21 @@ export const ParentBilling = () => {
                               <div>Остаток: {item.subscription.remaining_lessons}</div>
                               {isLowBalance && (
                                 <div className="alert alert-warning py-2 mt-2 mb-0">
-                                  Осталось мало занятий. Рекомендуем продлить абонемент.
+                                  Осталось мало занятий. Рекомендуем пополнить пакет занятий.
                                 </div>
                               )}
                             </div>
                           ) : (
-                            <div className="text-muted mb-3">Активный абонемент не найден.</div>
+                            <div className="text-muted mb-3">Активный пакет занятий не найден.</div>
                           )}
 
                           <div className="card mb-3">
                             <div className="card-header">
-                              <strong>Оплатить обучение</strong>
+                              <strong>Оплата</strong>
                             </div>
                             <div className="card-body">
-                              <div className="d-flex flex-wrap gap-2">
-                                {plans.map((plan) => (
-                                  <button
-                                    key={`${item.student_id}-${plan.code}`}
-                                    type="button"
-                                    className="btn btn-outline-primary btn-sm"
-                                    onClick={() => handleInitiatePayment(item.student_id, plan.code)}
-                                    disabled={processingStudentId === item.student_id || isPending}
-                                  >
-                                    {PLAN_LABELS[plan.code] || plan.label}: {plan.amount}
-                                  </button>
-                                ))}
+                              <div className="alert alert-info py-2 mb-0">
+                                Оплата оформляется через администратора. При необходимости обратитесь в школу.
                               </div>
 
                               {latestIntent ? (
@@ -271,6 +216,6 @@ export const ParentBilling = () => {
           </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 };

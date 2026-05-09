@@ -5,6 +5,8 @@ from rest_framework.response import Response
 
 from apps.users.permissions import IsAdminRole
 
+from .models import NotificationEvent
+from .serializers import NotificationEventSerializer
 from .services import send_low_balance_payment_reminders
 
 
@@ -20,3 +22,11 @@ def send_payment_reminders_view(request):
 
     result = send_low_balance_payment_reminders(threshold=threshold)
     return Response(result, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsAdminRole])
+def notification_events_view(request):
+    events = NotificationEvent.objects.select_related("student", "parent").order_by("-created_at")[:200]
+    serializer = NotificationEventSerializer(events, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)

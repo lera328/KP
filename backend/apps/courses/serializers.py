@@ -68,3 +68,23 @@ class GroupSerializer(serializers.ModelSerializer):
             GroupTeacher.objects.get_or_create(group=group, user_id=teacher_id)
 
         return group
+
+    def update(self, instance, validated_data):
+        student_ids = validated_data.pop("student_ids", None)
+        teacher_ids = validated_data.pop("teacher_ids", None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if student_ids is not None:
+            GroupStudent.objects.filter(group=instance).delete()
+            for student_id in student_ids:
+                GroupStudent.objects.get_or_create(group=instance, user_id=student_id)
+
+        if teacher_ids is not None:
+            GroupTeacher.objects.filter(group=instance).delete()
+            for teacher_id in teacher_ids:
+                GroupTeacher.objects.get_or_create(group=instance, user_id=teacher_id)
+
+        return instance

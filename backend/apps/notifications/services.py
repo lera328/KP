@@ -9,7 +9,52 @@ from django.db.models import Q
 from apps.finance.models import Subscription
 from apps.users.models import ParentProfile
 
-from .models import NotificationEvent
+from .models import NotificationEvent, NotificationTemplate
+
+
+DEFAULT_TEMPLATES = {
+    NotificationTemplate.EventType.ABSENCE: {
+        "title": "Уведомление о пропуске",
+        "body": (
+            "⚠️ Пропуск занятия\n"
+            "Ученик: {student_name}\n"
+            "Тема: {lesson_topic}\n"
+            "Дата: {lesson_starts_at}"
+        ),
+    },
+    NotificationTemplate.EventType.MAKEUP_APPROVED: {
+        "title": "Подтверждение отработки",
+        "body": (
+            "✅ Отработка подтверждена\n"
+            "Ученик: {student_name}\n"
+            "Тема: {lesson_topic}\n"
+            "Дата отработки: {lesson_starts_at}"
+        ),
+    },
+    NotificationTemplate.EventType.PAYMENT_REMINDER: {
+        "title": "Напоминание об оплате",
+        "body": (
+            "💳 Напоминание об оплате\n"
+            "Ученик: {student_name}\n"
+            "Осталось занятий: {remaining_lessons}\n"
+            "Пожалуйста, пополните абонемент."
+        ),
+    },
+}
+
+
+def _render_template(event_type, context, fallback):
+    template = NotificationTemplate.objects.filter(event_type=event_type, is_active=True).first()
+    if not template:
+        defaults = DEFAULT_TEMPLATES.get(event_type)
+        if defaults:
+            template, _ = NotificationTemplate.objects.get_or_create(
+                event_type=event_type,
+                defaults={"title": defaults["title"], "body": defaults["body"]},
+            )
+    if template:
+        return template.render(context)
+    return fallback
 
 
 def _send_telegram_message(chat_id: str, message: str):
@@ -54,11 +99,20 @@ def _create_notification_log(event_type, student, parent, message, status, detai
 def notify_parents_about_absence(attendance_record):
     student = attendance_record.student
     lesson = attendance_record.lesson
-    message = (
-        f"⚠️ Пропуск занятия\n"
-        f"Ученик: {student.get_full_name() or student.username}\n"
-        f"Тема: {lesson.topic.title}\n"
-        f"Дата: {lesson.starts_at.strftime('%d.%m.%Y %H:%M')}"
+    context = {
+        "student_name": student.get_full_name() or student.username,
+        "lesson_topic": lesson.topic.title,
+        "lesson_starts_at": lesson.starts_at.strftime("%d.%m.%Y %H:%M"),
+    }
+    message = _render_template(
+        NotificationTemplate.EventType.ABSENCE,
+        context,
+        fallback=(
+            f"⚠️ Пропуск занятия\n"
+            f"Ученик: {context['student_name']}\n"
+            f"Тема: {context['lesson_topic']}\n"
+            f"Дата: {context['lesson_starts_at']}"
+        ),
     )
 
     sent = 0
@@ -81,11 +135,21 @@ def notify_parents_about_absence(attendance_record):
 
 def notify_parents_about_makeup_approval(makeup_request):
     student = makeup_request.student
-    message = (
-        f"✅ Отработка подтверждена\n"
-        f"Ученик: {student.get_full_name() or student.username}\n"
-        f"Тема: {makeup_request.makeup_lesson.topic.title}\n"
-        f"Дата отработки: {makeup_request.makeup_lesson.starts_at.strftime('%d.%m.%Y %H:%M')}"
+    lesson = makeup_request.makeup_lesson
+    context = {
+        "student_name": student.get_full_name() or student.username,
+        "lesson_topic": lesson.topic.title,
+        "lesson_starts_at": lesson.starts_at.strftime("%d.%m.%Y %H:%M"),
+    }
+    message = _render_template(
+        NotificationTemplate.EventType.MAKEUP_APPROVED,
+        context,
+        fallback=(
+            f"✅ Отработка подтверждена\n"
+            f"Ученик: {context['student_name']}\n"
+            f"Тема: {context['lesson_topic']}\n"
+            f"Дата отработки: {context['lesson_starts_at']}"
+        ),
     )
 
     sent = 0
@@ -124,11 +188,19 @@ def send_low_balance_payment_reminders(threshold=None):
 
     for subscription in subscriptions:
         student = subscription.student
-        message = (
-            f"💳 Напоминание об оплате\n"
-            f"Ученик: {student.get_full_name() or student.username}\n"
-            f"Осталось занятий: {subscription.remaining_lessons}\n"
-            f"Пожалуйста, пополните абонемент."
+        context = {
+            "student_name": student.get_full_name() or student.username,
+            "remaining_lessons": subscription.remaining_lessons,
+        }
+        message = _render_template(
+            NotificationTemplate.EventType.PAYMENT_REMINDER,
+            context,
+            fallback=(
+                f"💳 Напоминание об оплате\n"
+                f"Ученик: {context['student_name']}\n"
+                f"Осталось занятий: {context['remaining_lessons']}\n"
+                f"Пожалуйста, пополните абонемент."
+            ),
         )
 
         for parent_profile in _parent_users_for_student(student.id):

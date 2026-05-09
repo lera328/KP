@@ -5,9 +5,12 @@ from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils import timezone
+from django.conf import settings
+from django.db.models import Q
 from datetime import timedelta
 
 from apps.users.permissions import IsAdminRole
+from apps.users.models import Role
 
 from .models import AttendanceRecord, Lesson, LessonTopic, MakeUpRequest
 from .serializers import (
@@ -19,6 +22,7 @@ from .serializers import (
     LessonTopicSerializer,
     MakeUpApproveSerializer,
     MakeUpRequestCreateSerializer,
+    MakeUpRequestSerializer,
 )
 
 
@@ -96,6 +100,21 @@ class LessonRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         return super().update(request, *args, **kwargs)
 
 
+def _ensure_parent_role(user):
+    is_parent = user.roles.filter(code=Role.Code.PARENT).exists()
+    if not is_parent:
+        raise PermissionDenied("Раздел доступен только родителям")
+
+
+def _month_range(reference_date):
+    start = reference_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if start.month == 12:
+        end = start.replace(year=start.year + 1, month=1)
+    else:
+        end = start.replace(month=start.month + 1)
+    return start, end
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def mark_attendance_view(request):
@@ -110,8 +129,154 @@ def mark_attendance_view(request):
 def create_makeup_request_view(request):
     serializer = MakeUpRequestCreateSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
+
+    absence = serializer.validated_data["absence"]
+    user = request.user
+    is_admin = user.is_superuser or user.roles.filter(code=Role.Code.ADMIN).exists()
+    if not is_admin:
+        if absence.student_id == user.id:
+            pass
+        elif user.roles.filter(code=Role.Code.PARENT).exists():
+            parent_profile = getattr(user, "parent_profile", None)
+            allowed = parent_profile and parent_profile.students.filter(
+                user_id=absence.student_id
+            ).exists()
+            if not allowed:
+                raise PermissionDenied("Нельзя создавать отработку для чужого ученика")
+        else:
+            raise PermissionDenied("Нет доступа к созданию отработки")
+
     request_obj = serializer.save()
     return Response({"id": request_obj.id, "status": request_obj.status}, status=status.HTTP_201_CREATED)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_makeups_view(request):
+    is_student = request.user.roles.filter(code=Role.Code.STUDENT).exists()
+    if not is_student:
+        raise PermissionDenied("Раздел доступен только ученику")
+
+    requests = (
+        MakeUpRequest.objects.filter(student=request.user)
+        .select_related(
+            "student",
+            "approved_by",
+            "absence_record__lesson__group",
+            "makeup_lesson__group",
+        )
+        .order_by("-created_at")
+    )
+    serializer = MakeUpRequestSerializer(requests, many=True)
+    return Response(serializer.data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def suggest_makeup_slots_view(request):
+    absence_record_id = request.query_params.get("absence_record_id")
+    if not absence_record_id:
+        return Response(
+            {"detail": "absence_record_id обязателен"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    absence = (
+        AttendanceRecord.objects.filter(id=absence_record_id)
+        .select_related("lesson", "lesson__topic")
+        .first()
+    )
+    if not absence or absence.status != AttendanceRecord.Status.ABSENT:
+        return Response(
+            {"detail": "Запись пропуска не найдена"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    user = request.user
+    is_admin = user.is_superuser or user.roles.filter(code=Role.Code.ADMIN).exists()
+    is_teacher = user.roles.filter(code=Role.Code.TEACHER).exists()
+    if not (is_admin or is_teacher):
+        if absence.student_id == user.id:
+            pass
+        elif user.roles.filter(code=Role.Code.PARENT).exists():
+            parent_profile = getattr(user, "parent_profile", None)
+            allowed = parent_profile and parent_profile.students.filter(
+                user_id=absence.student_id
+            ).exists()
+            if not allowed:
+                raise PermissionDenied("Нет доступа к этому ученику")
+        else:
+            raise PermissionDenied("Нет доступа к подбору отработки")
+
+    used_lesson_ids = set(
+        MakeUpRequest.objects.filter(student_id=absence.student_id).values_list(
+            "makeup_lesson_id", flat=True
+        )
+    )
+
+    now = timezone.now()
+    slots = (
+        Lesson.objects.filter(
+            is_makeup_slot=True,
+            topic_id=absence.lesson.topic_id,
+            starts_at__gte=now,
+        )
+        .exclude(id__in=used_lesson_ids)
+        .select_related("group", "teacher")
+        .order_by("starts_at")[:3]
+    )
+
+    payload = [
+        {
+            "lesson_id": slot.id,
+            "starts_at": slot.starts_at,
+            "group_id": slot.group_id,
+            "group_name": slot.group.name,
+            "teacher_name": (slot.teacher.get_full_name().strip() or slot.teacher.username),
+        }
+        for slot in slots
+    ]
+    return Response({"absence_record_id": absence.id, "slots": payload})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def parent_makeups_view(request):
+    _ensure_parent_role(request.user)
+
+    parent_profile = getattr(request.user, "parent_profile", None)
+    if not parent_profile:
+        return Response([])
+
+    student_ids = list(parent_profile.students.values_list("user_id", flat=True))
+    requests = (
+        MakeUpRequest.objects.filter(student_id__in=student_ids)
+        .select_related(
+            "student",
+            "approved_by",
+            "absence_record__lesson__group",
+            "makeup_lesson__group",
+        )
+        .order_by("-created_at")
+    )
+    serializer = MakeUpRequestSerializer(requests, many=True)
+    return Response(serializer.data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsAdminRole])
+def admin_makeups_view(request):
+    requests = (
+        MakeUpRequest.objects.select_related(
+            "student",
+            "approved_by",
+            "absence_record__lesson__group",
+            "makeup_lesson__group",
+        )
+        .order_by("-created_at")
+    )
+    serializer = MakeUpRequestSerializer(requests, many=True)
+    return Response(serializer.data)
 
 
 @api_view(["PATCH"])
@@ -264,7 +429,7 @@ def my_attendance_view(request):
 
     records = (
         AttendanceRecord.objects.filter(student=request.user)
-        .select_related("lesson", "lesson__group")
+        .select_related("lesson", "lesson__group", "lesson__topic")
         .order_by("-lesson__starts_at", "-id")
     )
 
@@ -273,7 +438,11 @@ def my_attendance_view(request):
             "id": record.id,
             "status": record.status,
             "charged": record.charged,
+            "grade": record.grade,
+            "teacher_comment": record.teacher_comment,
+            "homework": record.lesson.homework,
             "lesson_starts_at": record.lesson.starts_at,
+            "lesson_topic": record.lesson.conducted_topic or record.lesson.topic.title,
             "group_name": record.lesson.group.name,
             "lesson_id": record.lesson_id,
         }
@@ -281,3 +450,42 @@ def my_attendance_view(request):
     ]
 
     return Response(data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def teacher_salary_view(request):
+    is_teacher = request.user.roles.filter(code=Role.Code.TEACHER).exists()
+    if not is_teacher:
+        raise PermissionDenied("Раздел доступен только преподавателям")
+
+    now = timezone.localtime()
+    month_start, month_end = _month_range(now)
+
+    lessons = (
+        Lesson.objects.filter(
+            teacher=request.user,
+            starts_at__gte=month_start,
+            starts_at__lt=month_end,
+        )
+        .filter(Q(conducted_topic__isnull=False) | Q(conducted_description__isnull=False))
+        .exclude(conducted_topic="", conducted_description="")
+        .order_by("starts_at", "id")
+    )
+
+    response_data = [
+        {
+            "id": lesson.id,
+            "starts_at": lesson.starts_at,
+            "group": lesson.group_id,
+            "conducted_topic": lesson.conducted_topic,
+        }
+        for lesson in lessons
+    ]
+
+    return Response(
+        {
+            "rate_per_lesson": int(getattr(settings, "TEACHER_RATE_PER_LESSON", 1500)),
+            "lessons": response_data,
+        }
+    )

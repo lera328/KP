@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import api from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { AppLayout, teacherNavItems } from './AppLayout';
 
 const toNumber = (value) => {
   const parsed = Number(value);
@@ -9,9 +8,6 @@ const toNumber = (value) => {
 };
 
 export const TeacherSalary = () => {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
-
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -24,8 +20,11 @@ export const TeacherSalary = () => {
     setLoading(true);
     setError('');
     try {
-      const data = await api.getLessons();
-      setLessons(Array.isArray(data) ? data : []);
+      const data = await api.getTeacherSalary();
+      setLessons(Array.isArray(data?.lessons) ? data.lessons : []);
+      if (Number.isFinite(Number(data?.rate_per_lesson))) {
+        setRatePerLesson(Number(data.rate_per_lesson));
+      }
     } catch (loadError) {
       setError(loadError.message || 'Не удалось загрузить уроки для расчёта ЗП.');
     } finally {
@@ -37,54 +36,13 @@ export const TeacherSalary = () => {
     loadLessons();
   }, []);
 
-  const currentMonthData = useMemo(() => {
-    const now = new Date();
-    const month = now.getMonth();
-    const year = now.getFullYear();
-
-    const monthLessons = lessons.filter((lesson) => {
-      if (!lesson.starts_at) return false;
-      const dt = new Date(lesson.starts_at);
-      return dt.getMonth() === month && dt.getFullYear() === year;
-    });
-
-    const conductedLessons = monthLessons.filter(
-      (lesson) => (lesson.conducted_topic && lesson.conducted_topic.trim()) || (lesson.conducted_description && lesson.conducted_description.trim()),
-    );
-
-    return {
-      monthLessons,
-      conductedLessons,
-    };
-  }, [lessons]);
-
-  const conductedCount = currentMonthData.conductedLessons.length;
+  const conductedCount = lessons.length;
   const baseAmount = conductedCount * toNumber(ratePerLesson);
   const totalAmount = baseAmount + toNumber(bonus) - toNumber(penalty);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
-
   return (
-    <div>
-      <nav className="navbar navbar-expand-lg navbar-dark bg-info">
-        <div className="container-fluid">
-          <button className="btn btn-outline-light btn-sm me-2" onClick={() => navigate('/teacher')}>
-            Назад
-          </button>
-          <span className="navbar-brand">Расчёт собственной ЗП</span>
-          <div className="ms-auto">
-            <span className="text-white me-3">{user?.email}</span>
-            <button className="btn btn-outline-light btn-sm" onClick={handleLogout}>
-              Выйти
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      <div className="container-fluid mt-4">
+    <AppLayout title="KiberOne — Преподаватель" navItems={teacherNavItems}>
+      <div>
         {error && <div className="alert alert-danger">{error}</div>}
 
         <div className="row g-4">
@@ -144,7 +102,7 @@ export const TeacherSalary = () => {
               <div className="card-body p-0">
                 {loading ? (
                   <div className="p-3">Загрузка...</div>
-                ) : currentMonthData.conductedLessons.length === 0 ? (
+                ) : lessons.length === 0 ? (
                   <div className="p-3 text-muted">Проведённые уроки в этом месяце не найдены.</div>
                 ) : (
                   <div className="table-responsive">
@@ -157,7 +115,7 @@ export const TeacherSalary = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {currentMonthData.conductedLessons.map((lesson) => (
+                        {lessons.map((lesson) => (
                           <tr key={lesson.id}>
                             <td>{lesson.starts_at ? new Date(lesson.starts_at).toLocaleString('ru-RU') : '-'}</td>
                             <td>{lesson.group || '-'}</td>
@@ -173,6 +131,6 @@ export const TeacherSalary = () => {
           </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 };

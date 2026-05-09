@@ -1,0 +1,38 @@
+name: 'kiberone'
+
+# Production-overlay над docker-compose.yml.
+# Запуск:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+services:
+  db:
+    ports: []  # не публикуем порт Postgres наружу в проде
+
+  backend:
+    environment:
+      DJANGO_DEBUG: "0"
+    volumes:
+      - ./backend/media:/app/media
+      - backend_static:/app/staticfiles
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn config.wsgi:application --workers 4 --bind 0.0.0.0:8000 --access-logfile - --error-logfile -"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: kiberone_frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    volumes:
+      - ./backend/media:/usr/share/nginx/media:ro
+      - backend_static:/usr/share/nginx/static:ro
+    command: ["nginx", "-g", "daemon off;"]
+
+volumes:
+  backend_static:

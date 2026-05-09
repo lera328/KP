@@ -8,6 +8,8 @@ from .views import (
     parent_billing_view,
     parent_children_view,
     profile_view,
+    project_like_view,
+    projects_feed_view,
     session_login_view,
     student_projects_view,
     update_user_view,
@@ -23,6 +25,8 @@ urlpatterns = [
     path("parent/attendance/", parent_attendance_view, name="parent-attendance"),
     path("parent/billing/", parent_billing_view, name="parent-billing"),
     path("student/projects/", student_projects_view, name="student-projects"),
+    path("projects/feed/", projects_feed_view, name="projects-feed"),
+    path("projects/<int:project_id>/like/", project_like_view, name="projects-like"),
     path("token/", TokenObtainPairView.as_view(), name="token-obtain-pair"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
 ]

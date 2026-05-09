@@ -31,11 +31,14 @@ class LessonSerializer(serializers.ModelSerializer):
             "is_makeup_slot",
             "conducted_topic",
             "conducted_description",
+            "homework",
             "attendance_records",
         ]
 
     def get_attendance_records(self, obj):
-        records = obj.attendance_records.all().values("student_id", "status")
+        records = obj.attendance_records.all().values(
+            "student_id", "status", "grade", "teacher_comment"
+        )
         return list(records)
 
 
@@ -113,6 +116,7 @@ class ExtraLessonCreateSerializer(serializers.Serializer):
 class LessonConductSerializer(serializers.Serializer):
     topic = serializers.CharField(max_length=255, allow_blank=True, required=False)
     description = serializers.CharField(allow_blank=True, required=False)
+    homework = serializers.CharField(allow_blank=True, required=False)
     attendance = serializers.ListField(child=serializers.DictField(), allow_empty=False)
 
     def validate_attendance(self, value):
@@ -127,7 +131,25 @@ class LessonConductSerializer(serializers.Serializer):
             if status not in AttendanceRecord.Status.values:
                 raise serializers.ValidationError("Недопустимый статус посещаемости")
 
-            validated.append({"student_id": int(student_id), "status": status})
+            grade = row.get("grade")
+            if grade in ("", None):
+                grade = None
+            else:
+                try:
+                    grade = int(grade)
+                except (TypeError, ValueError):
+                    raise serializers.ValidationError("Оценка должна быть числом от 1 до 5")
+                if grade < 1 or grade > 5:
+                    raise serializers.ValidationError("Оценка должна быть числом от 1 до 5")
+
+            comment = (row.get("teacher_comment") or "").strip()
+
+            validated.append({
+                "student_id": int(student_id),
+                "status": status,
+                "grade": grade,
+                "teacher_comment": comment,
+            })
 
         return validated
 
@@ -135,10 +157,12 @@ class LessonConductSerializer(serializers.Serializer):
         lesson = self.context["lesson"]
         topic = self.validated_data.get("topic", "").strip()
         description = self.validated_data.get("description", "").strip()
+        homework = (self.validated_data.get("homework") or "").strip()
 
         lesson.conducted_topic = topic
         lesson.conducted_description = description
-        lesson.save(update_fields=["conducted_topic", "conducted_description"])
+        lesson.homework = homework
+        lesson.save(update_fields=["conducted_topic", "conducted_description", "homework"])
 
         results = []
         for row in self.validated_data["attendance"]:
@@ -147,6 +171,8 @@ class LessonConductSerializer(serializers.Serializer):
                     "lesson_id": lesson.id,
                     "student_id": row["student_id"],
                     "status": row["status"],
+                    "grade": row["grade"],
+                    "teacher_comment": row["teacher_comment"],
                 }
             )
             mark_serializer.is_valid(raise_exception=True)
@@ -157,10 +183,12 @@ class LessonConductSerializer(serializers.Serializer):
                     "student_id": record.student_id,
                     "status": record.status,
                     "charged": record.charged,
+                    "grade": record.grade,
+                    "teacher_comment": record.teacher_comment,
                 }
             )
 
-        return {"lesson_id": lesson.id, "attendance": results}
+        return {"lesson_id": lesson.id, "attendance": results, "homework": lesson.homework}
 
 
 class AttendanceMarkSerializer(serializers.Serializer):
@@ -168,19 +196,28 @@ class AttendanceMarkSerializer(serializers.Serializer):
     student_id = serializers.IntegerField()
     status = serializers.ChoiceField(choices=AttendanceRecord.Status.choices)
     makeup_request_id = serializers.IntegerField(required=False)
+    grade = serializers.IntegerField(required=False, allow_null=True, min_value=1, max_value=5)
+    teacher_comment = serializers.CharField(required=False, allow_blank=True)
 
     def save(self, **kwargs):
         lesson = Lesson.objects.get(id=self.validated_data["lesson_id"])
         student_id = self.validated_data["student_id"]
         status = self.validated_data["status"]
+        makeup_request_id = self.validated_data.get("makeup_request_id")
+        grade = self.validated_data.get("grade")
+        teacher_comment = self.validated_data.get("teacher_comment", "")
 
         previous_record = AttendanceRecord.objects.filter(lesson=lesson, student_id=student_id).first()
         previous_status = previous_record.status if previous_record else None
 
+        defaults = {"status": status, "teacher_comment": teacher_comment}
+        if "grade" in self.validated_data:
+            defaults["grade"] = grade
+
         record, _ = AttendanceRecord.objects.update_or_create(
             lesson=lesson,
             student_id=student_id,
-            defaults={"status": status},
+            defaults=defaults,
         )
 
         if status == AttendanceRecord.Status.PRESENT and not record.charged:
@@ -188,11 +225,25 @@ class AttendanceMarkSerializer(serializers.Serializer):
                 record.charged = True
                 record.save(update_fields=["charged"])
 
-        if status == AttendanceRecord.Status.MAKEUP and self.validated_data.get("makeup_request_id"):
-            request_obj = MakeUpRequest.objects.get(id=self.validated_data["makeup_request_id"])
-            request_obj.completed_record = record
-            request_obj.status = MakeUpRequest.Status.COMPLETED
-            request_obj.save(update_fields=["completed_record", "status"])
+        if status == AttendanceRecord.Status.MAKEUP:
+            request_obj = None
+            if makeup_request_id:
+                request_obj = MakeUpRequest.objects.filter(id=makeup_request_id).first()
+            if not request_obj:
+                request_obj = (
+                    MakeUpRequest.objects.filter(
+                        student_id=student_id,
+                        makeup_lesson=lesson,
+                        status=MakeUpRequest.Status.REQUESTED,
+                    )
+                    .order_by("created_at")
+                    .first()
+                )
+
+            if request_obj:
+                request_obj.completed_record = record
+                request_obj.status = MakeUpRequest.Status.COMPLETED
+                request_obj.save(update_fields=["completed_record", "status"])
 
         if status == AttendanceRecord.Status.ABSENT and previous_status != AttendanceRecord.Status.ABSENT:
             notify_parents_about_absence(record)
@@ -251,3 +302,73 @@ class MakeUpApproveSerializer(serializers.Serializer):
             notify_parents_about_makeup_approval(request_obj)
 
         return request_obj
+
+
+class MakeUpRequestSerializer(serializers.ModelSerializer):
+    student_id = serializers.IntegerField(source="student_id", read_only=True)
+    absence_record_id = serializers.IntegerField(source="absence_record_id", read_only=True)
+    student_name = serializers.SerializerMethodField()
+    absence_lesson_id = serializers.SerializerMethodField()
+    absence_starts_at = serializers.SerializerMethodField()
+    absence_group_name = serializers.SerializerMethodField()
+    makeup_lesson_id = serializers.SerializerMethodField()
+    makeup_starts_at = serializers.SerializerMethodField()
+    makeup_group_name = serializers.SerializerMethodField()
+    approved_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MakeUpRequest
+        fields = [
+            "id",
+            "status",
+            "created_at",
+            "approved_at",
+            "student_id",
+            "student_name",
+            "absence_record_id",
+            "absence_lesson_id",
+            "absence_starts_at",
+            "absence_group_name",
+            "makeup_lesson_id",
+            "makeup_starts_at",
+            "makeup_group_name",
+            "approved_by_name",
+        ]
+
+    def get_student_name(self, obj):
+        student = obj.student
+        if not student:
+            return ""
+        return student.get_full_name().strip() or student.username or f"ID {student.id}"
+
+    def get_absence_lesson_id(self, obj):
+        return obj.absence_record.lesson_id if obj.absence_record else None
+
+    def get_absence_starts_at(self, obj):
+        if not obj.absence_record or not obj.absence_record.lesson:
+            return None
+        return obj.absence_record.lesson.starts_at
+
+    def get_absence_group_name(self, obj):
+        if not obj.absence_record or not obj.absence_record.lesson or not obj.absence_record.lesson.group:
+            return ""
+        return obj.absence_record.lesson.group.name
+
+    def get_makeup_lesson_id(self, obj):
+        return obj.makeup_lesson_id
+
+    def get_makeup_starts_at(self, obj):
+        if not obj.makeup_lesson:
+            return None
+        return obj.makeup_lesson.starts_at
+
+    def get_makeup_group_name(self, obj):
+        if not obj.makeup_lesson or not obj.makeup_lesson.group:
+            return ""
+        return obj.makeup_lesson.group.name
+
+    def get_approved_by_name(self, obj):
+        approver = obj.approved_by
+        if not approver:
+            return ""
+        return approver.get_full_name().strip() or approver.username or f"ID {approver.id}"

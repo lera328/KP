@@ -165,41 +165,9 @@ class PaymentViewSet(viewsets.ModelViewSet):
         user = request.user
         if not user.roles.filter(code=Role.Code.PARENT).exists():
             raise PermissionDenied("Только родитель может инициировать оплату")
-
-        student_id = request.data.get('student_id')
-        plan = request.data.get('plan')
-
-        if not student_id or not plan:
-            return Response({"error": "Нужно передать student_id и plan"}, status=status.HTTP_400_BAD_REQUEST)
-
-        plan_data = PAYMENT_PLANS.get(plan)
-        if not plan_data:
-            return Response({"error": "Недопустимый тариф"}, status=status.HTTP_400_BAD_REQUEST)
-
-        parent_profile = getattr(user, 'parent_profile', None)
-        if not parent_profile:
-            return Response({"error": "Профиль родителя не найден"}, status=status.HTTP_400_BAD_REQUEST)
-
-        student_ids = set(parent_profile.students.values_list('user_id', flat=True))
-        if int(student_id) not in student_ids:
-            return Response({"error": "Этот ученик не привязан к текущему родителю"}, status=status.HTTP_403_FORBIDDEN)
-
-        intent = PaymentIntent.objects.create(
-            student_id=int(student_id),
-            parent=user,
-            plan=plan,
-            amount=plan_data['amount'],
-            lessons=plan_data['lessons'],
-            status=PaymentIntent.Status.PENDING,
-        )
-
-        serializer = PaymentIntentSerializer(intent)
         return Response(
-            {
-                "detail": f"Платеж создан и будет обработан автоматически через {AUTO_PROCESS_DELAY_SECONDS} сек.",
-                "intent": serializer.data,
-            },
-            status=status.HTTP_201_CREATED,
+            {"error": "Онлайн-оплата отключена. Обратитесь к администратору."},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='parent/intents')

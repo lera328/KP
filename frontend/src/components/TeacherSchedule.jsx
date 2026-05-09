@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { AppLayout, teacherNavItems } from './AppLayout';
 
 const STATUS_OPTIONS = [
   { value: 'present', label: 'Присутствовал' },
@@ -48,9 +47,6 @@ const isLessonConducted = (lesson) => {
 };
 
 export const TeacherSchedule = () => {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
-
   const [groups, setGroups] = useState([]);
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +56,7 @@ export const TeacherSchedule = () => {
   const [activeLesson, setActiveLesson] = useState(null);
   const [conductTopic, setConductTopic] = useState('');
   const [conductDescription, setConductDescription] = useState('');
+  const [conductHomework, setConductHomework] = useState('');
   const [attendanceRows, setAttendanceRows] = useState([]);
   const [saving, setSaving] = useState(false);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => getWeekRange(new Date()).monday);
@@ -128,21 +125,27 @@ export const TeacherSchedule = () => {
     const group = groupMap.get(lesson.group);
     const students = Array.isArray(group?.students) ? group.students : [];
     const existingAttendance = Array.isArray(lesson.attendance_records) ? lesson.attendance_records : [];
-    const statusByStudentId = new Map(
+    const recordByStudentId = new Map(
       existingAttendance
         .filter((record) => record && record.student_id && record.status)
-        .map((record) => [Number(record.student_id), record.status]),
+        .map((record) => [Number(record.student_id), record]),
     );
 
     setActiveLesson(lesson);
     setConductTopic(lesson.conducted_topic || '');
     setConductDescription(lesson.conducted_description || '');
+    setConductHomework(lesson.homework || '');
     setAttendanceRows(
-      students.map((student) => ({
-        studentId: student.id,
-        studentName: `${student.first_name || ''} ${student.last_name || ''}`.trim() || student.username || `ID ${student.id}`,
-        status: statusByStudentId.get(Number(student.id)) || 'present',
-      })),
+      students.map((student) => {
+        const existing = recordByStudentId.get(Number(student.id));
+        return {
+          studentId: student.id,
+          studentName: `${student.first_name || ''} ${student.last_name || ''}`.trim() || student.username || `ID ${student.id}`,
+          status: existing?.status || 'present',
+          grade: existing?.grade != null ? String(existing.grade) : '',
+          teacher_comment: existing?.teacher_comment || '',
+        };
+      }),
     );
     setSuccess('');
     setError('');
@@ -152,12 +155,25 @@ export const TeacherSchedule = () => {
     setActiveLesson(null);
     setConductTopic('');
     setConductDescription('');
+    setConductHomework('');
     setAttendanceRows([]);
   };
 
   const handleStatusChange = (studentId, value) => {
     setAttendanceRows((prev) =>
       prev.map((row) => (row.studentId === studentId ? { ...row, status: value } : row)),
+    );
+  };
+
+  const handleGradeChange = (studentId, value) => {
+    setAttendanceRows((prev) =>
+      prev.map((row) => (row.studentId === studentId ? { ...row, grade: value } : row)),
+    );
+  };
+
+  const handleCommentChange = (studentId, value) => {
+    setAttendanceRows((prev) =>
+      prev.map((row) => (row.studentId === studentId ? { ...row, teacher_comment: value } : row)),
     );
   };
 
@@ -180,7 +196,13 @@ export const TeacherSchedule = () => {
       await api.conductLesson(activeLesson.id, {
         topic: conductTopic,
         description: conductDescription,
-        attendance: attendanceRows.map((row) => ({ student_id: row.studentId, status: row.status })),
+        homework: conductHomework,
+        attendance: attendanceRows.map((row) => ({
+          student_id: row.studentId,
+          status: row.status,
+          grade: row.grade === '' ? null : Number(row.grade),
+          teacher_comment: row.teacher_comment || '',
+        })),
       });
 
       setSuccess('Урок проведён, посещаемость сохранена.');
@@ -191,11 +213,6 @@ export const TeacherSchedule = () => {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
   };
 
   const handlePrevWeek = () => {
@@ -229,31 +246,10 @@ export const TeacherSchedule = () => {
   };
 
   return (
-    <div>
-      <nav className="navbar navbar-expand-lg navbar-dark bg-info">
-        <div className="container-fluid">
-          <span className="navbar-brand">KiberOne — Расписание преподавателя</span>
-          <div className="ms-auto">
-            <span className="text-white me-3">{user?.email}</span>
-            <button className="btn btn-outline-light btn-sm" onClick={handleLogout}>
-              Выйти
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      <div className="container-fluid mt-4">
+    <AppLayout title="KiberOne — Преподаватель" navItems={teacherNavItems}>
+      <div>
         {error && <div className="alert alert-danger">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
-
-        <div className="d-flex gap-2 mb-3">
-          <button className="btn btn-outline-info btn-sm" onClick={() => navigate('/teacher/makeup-slots')}>
-            Слоты отработок
-          </button>
-          <button className="btn btn-outline-info btn-sm" onClick={() => navigate('/teacher/salary')}>
-            Рассчёт ЗП
-          </button>
-        </div>
 
         <div className="card">
           <div className="card-header d-flex justify-content-between align-items-center">
@@ -399,7 +395,19 @@ export const TeacherSchedule = () => {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label d-block">Посещаемость</label>
+                  <label className="form-label">Домашнее задание</label>
+                  <textarea
+                    className="form-control"
+                    rows={3}
+                    value={conductHomework}
+                    onChange={(event) => setConductHomework(event.target.value)}
+                    disabled={saving}
+                    placeholder="Что задано на дом всей группе"
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label d-block">Посещаемость и оценки</label>
                   {attendanceRows.length === 0 ? (
                     <div className="text-muted">В группе нет учеников.</div>
                   ) : (
@@ -407,8 +415,10 @@ export const TeacherSchedule = () => {
                       <table className="table table-sm table-bordered">
                         <thead>
                           <tr>
-                            <th>Ученик</th>
-                            <th>Статус</th>
+                            <th style={{ minWidth: '160px' }}>Ученик</th>
+                            <th style={{ width: '140px' }}>Статус</th>
+                            <th style={{ width: '110px' }}>Оценка</th>
+                            <th>Комментарий</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -429,6 +439,31 @@ export const TeacherSchedule = () => {
                                   ))}
                                 </select>
                               </td>
+                              <td>
+                                <select
+                                  className="form-select form-select-sm"
+                                  value={row.grade}
+                                  onChange={(event) => handleGradeChange(row.studentId, event.target.value)}
+                                  disabled={saving || row.status === 'absent'}
+                                >
+                                  <option value="">—</option>
+                                  <option value="5">5</option>
+                                  <option value="4">4</option>
+                                  <option value="3">3</option>
+                                  <option value="2">2</option>
+                                  <option value="1">1</option>
+                                </select>
+                              </td>
+                              <td>
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  value={row.teacher_comment}
+                                  onChange={(event) => handleCommentChange(row.studentId, event.target.value)}
+                                  disabled={saving}
+                                  placeholder="Заметка по ученику"
+                                />
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -445,6 +480,6 @@ export const TeacherSchedule = () => {
           </div>
         </div>
       )}
-    </div>
+    </AppLayout>
   );
 };

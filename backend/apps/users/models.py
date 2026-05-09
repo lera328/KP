@@ -49,3 +49,26 @@ class StudentProject(models.Model):
 
     def __str__(self):
         return f"Project #{self.id} ({self.student_id})"
+
+
+class StudentProjectImage(models.Model):
+    project = models.ForeignKey(StudentProject, on_delete=models.CASCADE, related_name="images")
+    image = models.ImageField(upload_to="projects/%Y/%m/")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"ProjectImage #{self.id} ({self.project_id})"
+
+
+class StudentProjectLike(models.Model):
+    project = models.ForeignKey(StudentProject, on_delete=models.CASCADE, related_name="likes")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="project_likes")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["project", "user"], name="unique_project_like"),
+        ]
+
+    def __str__(self):
+        return f"ProjectLike #{self.id} ({self.project_id})"
