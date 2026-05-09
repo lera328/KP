@@ -12,9 +12,13 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from django.http import HttpResponse, Http404
+from django.shortcuts import render
+
 from .permissions import IsAdminRole
-from .models import User, Role
+from .models import User, Role, StudentProfile
 from .models import StudentProject, StudentProjectLike, StudentProjectImage
+from .portfolio import build_portfolio_context, render_portfolio_pdf
 from .serializers import UserCreateSerializer, UserProfileSerializer, UserUpdateSerializer, StudentProjectSerializer
 from apps.courses.models import Group
 from apps.attendance.models import AttendanceRecord
@@ -338,3 +342,51 @@ def project_like_view(request, project_id):
         },
         status=status.HTTP_200_OK,
     )
+
+
+def _resolve_portfolio_target(request_user, target_student_id):
+    """Определить, чьё портфолио рендерим, и проверить права."""
+    if target_student_id is None or str(target_student_id) == str(request_user.id):
+        if request_user.roles.filter(code=Role.Code.STUDENT).exists():
+            return request_user
+        raise PermissionDenied("Раздел доступен только ученикам")
+
+    target = get_object_or_404(User, id=target_student_id)
+
+    is_admin = request_user.is_superuser or request_user.roles.filter(code=Role.Code.ADMIN).exists()
+    if is_admin:
+        return target
+
+    if request_user.roles.filter(code=Role.Code.PARENT).exists():
+        parent_profile = getattr(request_user, "parent_profile", None)
+        if parent_profile and parent_profile.students.filter(user_id=target.id).exists():
+            return target
+
+    raise PermissionDenied("Нет доступа к портфолио этого ученика")
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def student_portfolio_pdf_view(request):
+    target_student_id = request.query_params.get("student_id")
+    student = _resolve_portfolio_target(request.user, target_student_id)
+
+    pdf_bytes = render_portfolio_pdf(student, request=request)
+
+    safe_name = (student.get_full_name().strip() or student.username).replace(" ", "_")
+    filename = f"portfolio_{safe_name}.pdf"
+
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def public_portfolio_view(request, token):
+    profile = StudentProfile.objects.filter(portfolio_token=token).select_related("user").first()
+    if not profile:
+        raise Http404("Портфолио не найдено")
+
+    context = build_portfolio_context(profile.user, request=request)
+    return render(request, "users/portfolio_pdf.html", context)

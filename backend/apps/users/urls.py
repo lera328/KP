@@ -11,6 +11,7 @@ from .views import (
     project_like_view,
     projects_feed_view,
     session_login_view,
+    student_portfolio_pdf_view,
     student_projects_view,
     update_user_view,
 )
@@ -25,6 +26,7 @@ urlpatterns = [
     path("parent/attendance/", parent_attendance_view, name="parent-attendance"),
     path("parent/billing/", parent_billing_view, name="parent-billing"),
     path("student/projects/", student_projects_view, name="student-projects"),
+    path("student/portfolio/pdf/", student_portfolio_pdf_view, name="student-portfolio-pdf"),
     path("projects/feed/", projects_feed_view, name="projects-feed"),
     path("projects/<int:project_id>/like/", project_like_view, name="projects-like"),
     path("token/", TokenObtainPairView.as_view(), name="token-obtain-pair"),

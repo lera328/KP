@@ -20,6 +20,30 @@ export const StudentProjects = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+  const handleDownloadPortfolioPdf = async () => {
+    setDownloadingPdf(true);
+    setError('');
+    setSuccess('');
+    try {
+      const result = await api.downloadPortfolioPdf();
+      if (!result) return;
+      const url = URL.createObjectURL(result.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setSuccess('PDF портфолио скачан.');
+    } catch (downloadError) {
+      setError(downloadError.message || 'Не удалось сформировать PDF.');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   const loadProjects = async () => {
     setLoading(true);
@@ -141,9 +165,19 @@ export const StudentProjects = () => {
             <div className="card">
               <div className="card-header d-flex justify-content-between align-items-center">
                 <strong>Лента проектов</strong>
-                <button className="btn btn-outline-secondary btn-sm" onClick={loadProjects} disabled={loading}>
-                  Обновить
-                </button>
+                <div className="d-flex gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={handleDownloadPortfolioPdf}
+                    disabled={downloadingPdf}
+                  >
+                    {downloadingPdf ? 'Готовим PDF…' : 'Скачать PDF портфолио'}
+                  </button>
+                  <button className="btn btn-outline-secondary btn-sm" onClick={loadProjects} disabled={loading}>
+                    Обновить
+                  </button>
+                </div>
               </div>
               <div className="card-body p-0">
                 {loading ? (

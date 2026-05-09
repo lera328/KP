@@ -204,6 +204,30 @@ class APIService {
     return this.request('/auth/student/projects/');
   }
 
+  async downloadPortfolioPdf({ studentId } = {}) {
+    const query = studentId ? `?student_id=${encodeURIComponent(studentId)}` : '';
+    const response = await fetch(`${this.baseURL}/auth/student/portfolio/pdf/${query}`, {
+      headers: this.getHeaders(),
+    });
+
+    if (response.status === 401) {
+      this.clearToken();
+      window.location.href = '/login';
+      return null;
+    }
+
+    if (!response.ok) {
+      const errorPayload = await response.json().catch(() => null);
+      throw new Error(formatApiErrorMessage(errorPayload));
+    }
+
+    const blob = await response.blob();
+    const disposition = response.headers.get('content-disposition') || '';
+    const match = disposition.match(/filename="?([^";]+)"?/i);
+    const filename = match ? match[1] : 'portfolio.pdf';
+    return { blob, filename };
+  }
+
   async createStudentProject(payload) {
     const formData = new FormData();
     formData.append('title', payload.title || '');

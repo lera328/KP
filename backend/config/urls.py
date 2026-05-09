@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 from apps.core.views import health_check
+from apps.users.views import public_portfolio_view
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -13,6 +14,7 @@ urlpatterns = [
     path("api/", include("apps.attendance.urls")),
     path("api/finance/", include("apps.finance.urls")),
     path("api/notifications/", include("apps.notifications.urls")),
+    path("portfolio/<uuid:token>/", public_portfolio_view, name="public-portfolio"),
 ]
 
 if settings.DEBUG:
