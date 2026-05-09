@@ -1,9 +1,15 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import Course, Group, GroupStudent, GroupTeacher
+from .models import Course, Group, GroupStudent, GroupTeacher, Location
 
 User = get_user_model()
+
+
+class LocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Location
+        fields = ["id", "name", "address", "is_active"]
 
 
 class CourseSerializer(serializers.ModelSerializer):
@@ -17,6 +23,10 @@ class GroupSerializer(serializers.ModelSerializer):
     teacher_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
     students = serializers.SerializerMethodField(read_only=True)
     teachers = serializers.SerializerMethodField(read_only=True)
+    location = serializers.PrimaryKeyRelatedField(
+        queryset=Location.objects.filter(is_active=True), required=True, allow_null=False
+    )
+    location_name = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Group
@@ -27,11 +37,16 @@ class GroupSerializer(serializers.ModelSerializer):
             "is_active",
             "weekly_lesson_weekday",
             "weekly_lesson_time",
+            "location",
+            "location_name",
             "student_ids",
             "teacher_ids",
             "students",
             "teachers",
         ]
+
+    def get_location_name(self, obj):
+        return obj.location.name if obj.location_id else None
 
     def get_students(self, obj):
         students = obj.students.all().order_by("id")

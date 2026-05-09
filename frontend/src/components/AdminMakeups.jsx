@@ -97,6 +97,7 @@ export const AdminMakeups = () => {
                 <thead>
                   <tr>
                     <th>Ученик</th>
+                    <th>Родитель / контакты</th>
                     <th>Пропуск</th>
                     <th>Слот</th>
                     <th>Статус</th>
@@ -108,6 +109,29 @@ export const AdminMakeups = () => {
                   {filteredMakeups.map((item) => (
                     <tr key={item.id}>
                       <td>{item.student_name || `ID ${item.student_id}`}</td>
+                      <td>
+                        {Array.isArray(item.parent_contacts) && item.parent_contacts.length > 0 ? (
+                          <div className="d-flex flex-column gap-1">
+                            {item.parent_contacts.map((parent) => (
+                              <div key={parent.id}>
+                                <div className="small fw-semibold">{parent.name}</div>
+                                {parent.phone ? (
+                                  <div className="small">
+                                    <a href={`tel:${parent.phone}`}>{parent.phone}</a>
+                                  </div>
+                                ) : (
+                                  <div className="small text-muted">телефон не указан</div>
+                                )}
+                                {parent.email ? (
+                                  <div className="small text-muted">{parent.email}</div>
+                                ) : null}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-muted small">нет родителей</span>
+                        )}
+                      </td>
                       <td>
                         {item.absence_starts_at ? formatDateTime(item.absence_starts_at) : '-'}
                         {item.absence_group_name ? ` · ${item.absence_group_name}` : ''}
@@ -122,9 +146,14 @@ export const AdminMakeups = () => {
                         <button
                           className="btn btn-success btn-sm"
                           onClick={() => handleApprove(item)}
-                          disabled={savingId === item.id || item.status !== 'completed'}
+                          disabled={savingId === item.id || item.status === 'approved'}
+                          title={
+                            item.status === 'approved'
+                              ? 'Заявка уже подтверждена'
+                              : 'Подтвердить запись на отработку'
+                          }
                         >
-                          Подтвердить
+                          {item.status === 'approved' ? 'Подтверждено' : 'Подтвердить'}
                         </button>
                       </td>
                     </tr>

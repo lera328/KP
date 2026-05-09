@@ -42,11 +42,6 @@ export const StudentAttendance = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const [requestForm, setRequestForm] = useState({
-    absenceId: '',
-    makeupLessonId: '',
-  });
-
   const loadData = async () => {
     setLoading(true);
     setError('');
@@ -80,70 +75,6 @@ export const StudentAttendance = () => {
   }, [lessons]);
 
   const nextLesson = upcomingLessons.length > 0 ? upcomingLessons[0] : null;
-
-  const lessonsById = useMemo(() => new Map(lessons.map((lesson) => [lesson.id, lesson])), [lessons]);
-
-  const absenceRecords = useMemo(() => records.filter((record) => record.status === 'absent'), [records]);
-
-  const makeupsByAbsence = useMemo(() => {
-    const map = new Map();
-    makeups.forEach((item) => {
-      if (item.absence_record_id) {
-        map.set(item.absence_record_id, item);
-      }
-    });
-    return map;
-  }, [makeups]);
-
-  const availableMakeupLessons = useMemo(() => {
-    if (!requestForm.absenceId) return [];
-    const absenceRecord = records.find((record) => String(record.id) === String(requestForm.absenceId));
-    if (!absenceRecord) return [];
-    const absenceLesson = lessonsById.get(absenceRecord.lesson_id);
-    if (!absenceLesson) return [];
-
-    const topicId = absenceLesson.topic;
-    const now = new Date();
-
-    return lessons
-      .filter((lesson) => {
-        if (!lesson.is_makeup_slot || !lesson.starts_at) return false;
-        if (lesson.topic !== topicId) return false;
-        return new Date(lesson.starts_at) >= now;
-      })
-      .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
-  }, [requestForm.absenceId, records, lessons, lessonsById]);
-
-  const handleRequestChange = (field, value) => {
-    setRequestForm((prev) => ({
-      ...prev,
-      [field]: value,
-      ...(field === 'absenceId' ? { makeupLessonId: '' } : null),
-    }));
-  };
-
-  const handleRequestMakeup = async (event) => {
-    event.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (!requestForm.absenceId || !requestForm.makeupLessonId) {
-      setError('Выберите пропуск и слот отработки.');
-      return;
-    }
-
-    try {
-      await api.requestMakeup({
-        absence_record_id: Number(requestForm.absenceId),
-        makeup_lesson_id: Number(requestForm.makeupLessonId),
-      });
-      setSuccess('Заявка на отработку отправлена.');
-      setRequestForm({ absenceId: '', makeupLessonId: '' });
-      await loadData();
-    } catch (requestError) {
-      setError(requestError.message || 'Не удалось отправить заявку на отработку.');
-    }
-  };
 
   return (
     <AppLayout title="KiberOne — Ученик" navItems={studentNavItems}>
@@ -243,64 +174,12 @@ export const StudentAttendance = () => {
 
             <div className="card mt-4">
               <div className="card-header">
-                <strong>Запросить отработку</strong>
+                <strong>Отработка пропуска</strong>
               </div>
-              <div className="card-body">
-                {absenceRecords.length === 0 ? (
-                  <div className="text-muted">Пропусков для отработки нет.</div>
-                ) : (
-                  <form onSubmit={handleRequestMakeup}>
-                    <div className="mb-3">
-                      <label className="form-label">Пропуск</label>
-                      <select
-                        className="form-select"
-                        value={requestForm.absenceId}
-                        onChange={(event) => handleRequestChange('absenceId', event.target.value)}
-                        disabled={loading}
-                      >
-                        <option value="">Выберите пропуск</option>
-                        {absenceRecords.map((record) => {
-                          const lesson = lessonsById.get(record.lesson_id);
-                          const lessonDate = record.lesson_starts_at ? formatDateTime(record.lesson_starts_at) : '-';
-                          const lessonGroup = lesson?.group || record.group_name || '';
-                          const isRequested = makeupsByAbsence.has(record.id);
-
-                          return (
-                            <option key={record.id} value={record.id} disabled={isRequested}>
-                              {lessonDate} — {lessonGroup || 'Группа'}{isRequested ? ' (уже есть заявка)' : ''}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="form-label">Слот отработки</label>
-                      <select
-                        className="form-select"
-                        value={requestForm.makeupLessonId}
-                        onChange={(event) => handleRequestChange('makeupLessonId', event.target.value)}
-                        disabled={loading || !requestForm.absenceId}
-                      >
-                        <option value="">Выберите слот</option>
-                        {availableMakeupLessons.map((lesson) => (
-                          <option key={lesson.id} value={lesson.id}>
-                            {formatDateTime(lesson.starts_at)} — группа #{lesson.group}
-                          </option>
-                        ))}
-                      </select>
-                      {requestForm.absenceId && availableMakeupLessons.length === 0 && (
-                        <div className="text-muted small mt-2">
-                          Подходящих слотов пока нет.
-                        </div>
-                      )}
-                    </div>
-
-                    <button className="btn btn-primary" type="submit" disabled={loading}>
-                      Отправить заявку
-                    </button>
-                  </form>
-                )}
+              <div className="card-body text-muted small">
+                Запись на отработку оформляет родитель.
+                После пропуска родителю автоматически приходит письмо со ссылкой
+                «Подтвердить отработку» — нужно только нажать на неё.
               </div>
             </div>
           </div>

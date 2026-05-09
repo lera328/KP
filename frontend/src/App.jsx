@@ -12,7 +12,6 @@ import { TeacherGroups } from './components/TeacherGroups';
 import { StudentGroups } from './components/StudentGroups';
 import { TeacherMakeupSlots } from './components/TeacherMakeupSlots';
 import { TeacherSalary } from './components/TeacherSalary';
-import { AdminSchedule } from './components/AdminSchedule';
 import { ParentChildren } from './components/ParentChildren';
 import { ParentAttendance } from './components/ParentAttendance';
 import { ParentBilling } from './components/ParentBilling';
@@ -24,9 +23,9 @@ import { AdminFinance } from './components/AdminFinance';
 import { AdminGroups } from './components/AdminGroups';
 import { AdminNotifications } from './components/AdminNotifications';
 import { AdminMakeups } from './components/AdminMakeups';
-import { AdminCourses } from './components/AdminCourses';
 import AdminChurnRisk from './components/AdminChurnRisk';
 import AdminAnalytics from './components/AdminAnalytics';
+import MakeupConfirm from './components/MakeupConfirm';
 
 /**
  * Main App - sets up routing and auth context
@@ -57,6 +56,7 @@ function AppRoutes() {
       <Route path="/login" element={<LoginForm />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password/:token" element={<ResetPassword />} />
+      <Route path="/m/:token" element={<MakeupConfirm />} />
       <Route
         path="/force-change-password"
         element={
@@ -145,9 +145,7 @@ function AdminRoutes() {
       <Route path="/" element={<AdminDashboard />} />
       <Route path="users" element={<AdminUsers />} />
       <Route path="groups" element={<AdminGroups />} />
-      <Route path="courses" element={<AdminCourses />} />
       <Route path="finance" element={<AdminFinance />} />
-      <Route path="attendance" element={<AdminAttendance />} />
       <Route path="makeups" element={<AdminMakeups />} />
       <Route path="notifications" element={<AdminNotifications />} />
       <Route path="churn-risk" element={<AdminChurnRisk />} />
@@ -212,7 +210,6 @@ const PlaceholderPage = ({ title }) => (
 
 // Admin pages
 const AdminDashboard = () => <Dashboard />;
-const AdminAttendance = () => <AdminSchedule />;
 
 // Teacher pages
 const TeacherDashboard = () => <Dashboard />;

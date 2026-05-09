@@ -1,3 +1,5 @@
+import secrets
+
 from django.conf import settings
 from django.db import models
 
@@ -13,12 +15,24 @@ class LessonTopic(models.Model):
 
 
 class Lesson(models.Model):
-    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="lessons")
-    topic = models.ForeignKey(LessonTopic, on_delete=models.PROTECT, related_name="lessons")
+    group = models.ForeignKey(
+        Group, on_delete=models.CASCADE, related_name="lessons", null=True, blank=True
+    )
+    topic = models.ForeignKey(
+        LessonTopic, on_delete=models.PROTECT, related_name="lessons", null=True, blank=True
+    )
     teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="taught_lessons")
     starts_at = models.DateTimeField()
     is_extra = models.BooleanField(default=False)
     is_makeup_slot = models.BooleanField(default=False)
+    location = models.ForeignKey(
+        "courses.Location",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="lessons",
+    )
+    makeup_capacity = models.PositiveSmallIntegerField(default=2)
     conducted_topic = models.CharField(max_length=255, blank=True)
     conducted_description = models.TextField(blank=True)
     homework = models.TextField(blank=True)
@@ -72,7 +86,38 @@ class MakeUpRequest(models.Model):
     def clean(self):
         if self.absence_record.status != AttendanceRecord.Status.ABSENT:
             raise ValueError("Отработка может быть создана только для пропуска")
-        missed_topic = self.absence_record.lesson.topic_id
-        makeup_topic = self.makeup_lesson.topic_id
-        if missed_topic != makeup_topic:
-            raise ValueError("Отработка должна быть по теме пропущенного занятия")
+        if not self.makeup_lesson.is_makeup_slot:
+            raise ValueError("Урок не является слотом отработки")
+
+
+def _generate_invite_token():
+    return secrets.token_urlsafe(32)
+
+
+class MakeUpInvite(models.Model):
+    """FR-11: одноразовый токен для one-click подтверждения отработки родителем."""
+
+    absence_record = models.ForeignKey(
+        AttendanceRecord, on_delete=models.CASCADE, related_name="makeup_invites"
+    )
+    makeup_lesson = models.ForeignKey(
+        Lesson, on_delete=models.CASCADE, related_name="makeup_invites"
+    )
+    token = models.CharField(max_length=64, unique=True, default=_generate_invite_token)
+    sent_to_email = models.EmailField(blank=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_makeup_request = models.ForeignKey(
+        MakeUpRequest,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="invites",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["token"])]
+
+    def __str__(self):
+        return f"Invite #{self.id} (absence={self.absence_record_id})"

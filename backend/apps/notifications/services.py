@@ -136,9 +136,17 @@ def notify_parents_about_absence(attendance_record):
 def notify_parents_about_makeup_approval(makeup_request):
     student = makeup_request.student
     lesson = makeup_request.makeup_lesson
+    # У слота отработки темы может не быть — берём тему пропущенного занятия как ориентир.
+    topic_title = ""
+    if lesson and lesson.topic_id:
+        topic_title = lesson.topic.title
+    elif makeup_request.absence_record_id and makeup_request.absence_record.lesson.topic_id:
+        topic_title = makeup_request.absence_record.lesson.topic.title
+    else:
+        topic_title = "—"
     context = {
         "student_name": student.get_full_name() or student.username,
-        "lesson_topic": lesson.topic.title,
+        "lesson_topic": topic_title,
         "lesson_starts_at": lesson.starts_at.strftime("%d.%m.%Y %H:%M"),
     }
     message = _render_template(

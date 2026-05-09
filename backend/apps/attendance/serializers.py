@@ -18,21 +18,31 @@ class LessonTopicSerializer(serializers.ModelSerializer):
 
 class LessonSerializer(serializers.ModelSerializer):
     attendance_records = serializers.SerializerMethodField()
+    location_name = serializers.SerializerMethodField()
+    group_name = serializers.SerializerMethodField()
+    makeup_topics = serializers.SerializerMethodField()
+    makeup_booked = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
         fields = [
             "id",
             "group",
+            "group_name",
             "topic",
             "teacher",
             "starts_at",
             "is_extra",
             "is_makeup_slot",
+            "location",
+            "location_name",
+            "makeup_capacity",
             "conducted_topic",
             "conducted_description",
             "homework",
             "attendance_records",
+            "makeup_topics",
+            "makeup_booked",
         ]
 
     def get_attendance_records(self, obj):
@@ -40,6 +50,60 @@ class LessonSerializer(serializers.ModelSerializer):
             "student_id", "status", "grade", "teacher_comment"
         )
         return list(records)
+
+    def get_location_name(self, obj):
+        return obj.location.name if obj.location_id else ""
+
+    def get_group_name(self, obj):
+        return obj.group.name if obj.group_id else ""
+
+    def get_makeup_booked(self, obj):
+        if not obj.is_makeup_slot:
+            return 0
+        return MakeUpRequest.objects.filter(
+            makeup_lesson=obj,
+            status__in=[
+                MakeUpRequest.Status.REQUESTED,
+                MakeUpRequest.Status.COMPLETED,
+                MakeUpRequest.Status.APPROVED,
+            ],
+        ).count()
+
+    def get_makeup_topics(self, obj):
+        """Темы пропущенных занятий, которые отрабатывают на этом слоте.
+
+        Несколько разных тем перечисляются через '; '.
+        """
+        if not obj.is_makeup_slot:
+            return ""
+        active_statuses = [
+            MakeUpRequest.Status.REQUESTED,
+            MakeUpRequest.Status.COMPLETED,
+            MakeUpRequest.Status.APPROVED,
+        ]
+        titles = []
+        seen = set()
+        requests = (
+            MakeUpRequest.objects.filter(
+                makeup_lesson=obj,
+                status__in=active_statuses,
+            )
+            .select_related("absence_record__lesson__topic")
+        )
+        for req in requests:
+            absence = req.absence_record
+            if not absence or not absence.lesson:
+                continue
+            # Учитель ведёт тему, которую дал на занятии (conducted_topic),
+            # либо плановую тему урока.
+            title = (absence.lesson.conducted_topic or "").strip()
+            if not title and absence.lesson.topic_id:
+                title = absence.lesson.topic.title
+            title = (title or "").strip()
+            if title and title not in seen:
+                seen.add(title)
+                titles.append(title)
+        return "; ".join(titles)
 
 
 class GroupScheduleSetupSerializer(serializers.Serializer):
@@ -247,6 +311,11 @@ class AttendanceMarkSerializer(serializers.Serializer):
 
         if status == AttendanceRecord.Status.ABSENT and previous_status != AttendanceRecord.Status.ABSENT:
             notify_parents_about_absence(record)
+            try:
+                from .makeup_invites import notify_absence_makeup_options
+                notify_absence_makeup_options(record)
+            except Exception:  # noqa: BLE001
+                pass
 
         return record
 
@@ -262,8 +331,38 @@ class MakeUpRequestCreateSerializer(serializers.Serializer):
         if absence.status != AttendanceRecord.Status.ABSENT:
             raise serializers.ValidationError("Отработка создается только на основании пропуска")
 
-        if absence.lesson.topic_id != makeup_lesson.topic_id:
-            raise serializers.ValidationError("Отработка должна проходить по теме пропущенного занятия")
+        # Правило: пропущенный урок должен входить в три последних прошедших занятия ученика
+        last_lesson_ids = list(
+            AttendanceRecord.objects.filter(
+                student_id=absence.student_id,
+                lesson__starts_at__lte=timezone.now(),
+            )
+            .order_by("-lesson__starts_at")
+            .values_list("lesson_id", flat=True)[:3]
+        )
+        if absence.lesson_id not in last_lesson_ids:
+            raise serializers.ValidationError(
+                "Запись на отработку доступна только для трёх последних занятий ученика."
+            )
+
+        if not makeup_lesson.is_makeup_slot:
+            raise serializers.ValidationError("Выбранный урок не является слотом отработки")
+
+        booked = MakeUpRequest.objects.filter(
+            makeup_lesson=makeup_lesson,
+            status__in=[
+                MakeUpRequest.Status.REQUESTED,
+                MakeUpRequest.Status.COMPLETED,
+                MakeUpRequest.Status.APPROVED,
+            ],
+        ).count()
+        if booked >= (makeup_lesson.makeup_capacity or 2):
+            raise serializers.ValidationError("Слот уже заполнен")
+
+        if MakeUpRequest.objects.filter(
+            absence_record=absence,
+        ).exclude(status=MakeUpRequest.Status.APPROVED).exists():
+            raise serializers.ValidationError("Для этого пропуска уже есть активная заявка")
 
         attrs["absence"] = absence
         attrs["makeup_lesson"] = makeup_lesson
@@ -284,14 +383,15 @@ class MakeUpApproveSerializer(serializers.Serializer):
     def save(self, request_obj, admin_user):
         old_status = request_obj.status
 
-        if request_obj.status != MakeUpRequest.Status.COMPLETED:
-            raise serializers.ValidationError("Сначала нужно зафиксировать факт отработки")
+        if request_obj.status == MakeUpRequest.Status.APPROVED:
+            raise serializers.ValidationError("Заявка уже подтверждена.")
 
         request_obj.status = MakeUpRequest.Status.APPROVED
         request_obj.approved_by = admin_user
         request_obj.approved_at = timezone.now()
         request_obj.save(update_fields=["status", "approved_by", "approved_at"])
 
+        # Списание урока происходит только после фактической отработки.
         completed = request_obj.completed_record
         if completed and not completed.charged:
             if charge_one_lesson(request_obj.student_id):
@@ -305,8 +405,8 @@ class MakeUpApproveSerializer(serializers.Serializer):
 
 
 class MakeUpRequestSerializer(serializers.ModelSerializer):
-    student_id = serializers.IntegerField(source="student_id", read_only=True)
-    absence_record_id = serializers.IntegerField(source="absence_record_id", read_only=True)
+    student_id = serializers.IntegerField(read_only=True)
+    absence_record_id = serializers.IntegerField(read_only=True)
     student_name = serializers.SerializerMethodField()
     absence_lesson_id = serializers.SerializerMethodField()
     absence_starts_at = serializers.SerializerMethodField()
@@ -315,6 +415,7 @@ class MakeUpRequestSerializer(serializers.ModelSerializer):
     makeup_starts_at = serializers.SerializerMethodField()
     makeup_group_name = serializers.SerializerMethodField()
     approved_by_name = serializers.SerializerMethodField()
+    parent_contacts = serializers.SerializerMethodField()
 
     class Meta:
         model = MakeUpRequest
@@ -333,6 +434,7 @@ class MakeUpRequestSerializer(serializers.ModelSerializer):
             "makeup_starts_at",
             "makeup_group_name",
             "approved_by_name",
+            "parent_contacts",
         ]
 
     def get_student_name(self, obj):
@@ -372,3 +474,26 @@ class MakeUpRequestSerializer(serializers.ModelSerializer):
         if not approver:
             return ""
         return approver.get_full_name().strip() or approver.username or f"ID {approver.id}"
+
+    def get_parent_contacts(self, obj):
+        from apps.users.models import ParentProfile
+
+        if not obj.student_id:
+            return []
+        parents = (
+            ParentProfile.objects.filter(students__user_id=obj.student_id)
+            .select_related("user")
+            .distinct()
+        )
+        result = []
+        for profile in parents:
+            user = profile.user
+            result.append(
+                {
+                    "id": user.id,
+                    "name": user.get_full_name().strip() or user.username,
+                    "phone": user.phone or "",
+                    "email": user.email or "",
+                }
+            )
+        return result

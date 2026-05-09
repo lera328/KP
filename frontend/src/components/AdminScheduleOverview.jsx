@@ -264,26 +264,55 @@ export const AdminScheduleOverview = ({ embedded = false }) => {
                             {day.lessons.map((lesson) => {
                               const group = groupMap.get(lesson.group);
                               const teacher = teacherMap.get(lesson.teacher);
+                              const isMakeup = Boolean(lesson.is_makeup_slot);
+                              const booked = Number(lesson.makeup_booked || 0);
+                              const capacity = Number(lesson.makeup_capacity || 0);
+                              const isFull = isMakeup && capacity > 0 && booked >= capacity;
+                              const titleText = isMakeup
+                                ? 'Слот отработки'
+                                : group?.name || lesson.group_name || (lesson.group ? `Группа #${lesson.group}` : 'Занятие');
+                              const cardClass = isMakeup
+                                ? `card text-start w-100 ${isFull ? 'border-secondary' : booked > 0 ? 'border-warning' : 'border-success'}`
+                                : lesson.is_extra
+                                  ? 'card border-warning text-start w-100'
+                                  : 'card text-start w-100';
                               return (
                                 <button
                                   key={lesson.id}
                                   type="button"
-                                  className={lesson.is_extra ? 'card border-warning text-start w-100' : 'card text-start w-100'}
+                                  className={cardClass}
                                   onClick={() => openLessonModal(lesson)}
                                   style={{ cursor: 'pointer' }}
                                 >
                                   <div className="card-body p-1">
                                     <div className="fw-semibold small">{formatTime(lesson.starts_at)}</div>
-                                    <div className="small text-truncate" title={group?.name || `Группа #${lesson.group}`}>
-                                      {group?.name || `Группа #${lesson.group}`}
+                                    <div className="small text-truncate" title={titleText}>
+                                      {titleText}
                                     </div>
                                     <div className="small text-muted text-truncate" title={teacherLabel(teacher)}>
                                       {teacherLabel(teacher)}
                                     </div>
-                                    <div className="mt-1">
-                                      <span className={`badge ${lesson.is_extra ? 'text-bg-warning' : 'text-bg-secondary'}`} style={{ fontSize: '0.65rem' }}>
-                                        {lesson.is_extra ? 'Разовое' : 'Регулярное'}
+                                    <div className="mt-1 d-flex flex-wrap gap-1">
+                                      <span
+                                        className={`badge ${
+                                          isMakeup
+                                            ? 'text-bg-info'
+                                            : lesson.is_extra
+                                              ? 'text-bg-warning'
+                                              : 'text-bg-secondary'
+                                        }`}
+                                        style={{ fontSize: '0.65rem' }}
+                                      >
+                                        {isMakeup ? 'Отработка' : lesson.is_extra ? 'Разовое' : 'Регулярное'}
                                       </span>
+                                      {isMakeup ? (
+                                        <span
+                                          className={`badge ${isFull ? 'text-bg-secondary' : booked > 0 ? 'text-bg-warning' : 'text-bg-success'}`}
+                                          style={{ fontSize: '0.65rem' }}
+                                        >
+                                          {isFull ? 'Занят' : 'Свободен'} {booked}/{capacity || '—'}
+                                        </span>
+                                      ) : null}
                                     </div>
                                   </div>
                                 </button>
@@ -314,16 +343,33 @@ export const AdminScheduleOverview = ({ embedded = false }) => {
                 <div className="modal-body">
                   <div className="row g-3">
                     <div className="col-md-6">
-                      <div><strong>Группа:</strong> {lessonDetails.group?.name || `Группа #${selectedLesson.group}`}</div>
+                      <div>
+                        <strong>{selectedLesson.is_makeup_slot ? 'Тип:' : 'Группа:'}</strong>{' '}
+                        {selectedLesson.is_makeup_slot
+                          ? 'Слот отработки'
+                          : lessonDetails.group?.name || selectedLesson.group_name || (selectedLesson.group ? `Группа #${selectedLesson.group}` : '—')}
+                      </div>
                       <div><strong>Дата:</strong> {selectedLesson.starts_at ? new Date(selectedLesson.starts_at).toLocaleDateString('ru-RU') : '-'}</div>
                       <div><strong>Время:</strong> {formatTime(selectedLesson.starts_at)}</div>
                       <div><strong>Статус:</strong> {lessonDetails.statusLabel}</div>
                     </div>
                     <div className="col-md-6">
                       <div><strong>Преподаватель:</strong> {teacherLabel(lessonDetails.teacher)}</div>
-                      <div><strong>Тип:</strong> {selectedLesson.is_extra ? 'Разовое' : 'Регулярное'}</div>
-                      <div><strong>Слот отработки:</strong> {selectedLesson.is_makeup_slot ? 'Да' : 'Нет'}</div>
-                      <div><strong>ID темы:</strong> {selectedLesson.topic || '-'}</div>
+                      <div>
+                        <strong>Тип занятия:</strong>{' '}
+                        {selectedLesson.is_makeup_slot
+                          ? 'Отработка'
+                          : selectedLesson.is_extra
+                            ? 'Разовое'
+                            : 'Регулярное'}
+                      </div>
+                      {selectedLesson.is_makeup_slot ? (
+                        <div>
+                          <strong>Темы отработки:</strong> {selectedLesson.makeup_topics || '—'}
+                        </div>
+                      ) : (
+                        <div><strong>ID темы:</strong> {selectedLesson.topic || '—'}</div>
+                      )}
                     </div>
                   </div>
 

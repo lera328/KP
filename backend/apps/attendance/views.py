@@ -1,6 +1,6 @@
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from django.db import transaction
@@ -12,7 +12,9 @@ from datetime import timedelta
 from apps.users.permissions import IsAdminRole
 from apps.users.models import Role
 
-from .models import AttendanceRecord, Lesson, LessonTopic, MakeUpRequest
+from .conflicts import describe_conflict, find_location_conflict
+from .makeup_invites import accept_invite, get_invite_details
+from .models import AttendanceRecord, Lesson, LessonTopic, MakeUpInvite, MakeUpRequest
 from .serializers import (
     AttendanceMarkSerializer,
     ExtraLessonCreateSerializer,
@@ -55,11 +57,34 @@ class LessonListCreateView(generics.ListCreateAPIView):
 
         is_teacher = user.roles.filter(code="teacher").exists()
         if is_teacher:
-            return queryset.filter(teacher=user)
+            # Слоты отработки в общем расписании показываются только после того,
+            # как админ подтвердил хотя бы одну заявку (записанного ребёнка).
+            approved = MakeUpRequest.Status.APPROVED
+            return (
+                queryset.filter(teacher=user)
+                .filter(
+                    Q(is_makeup_slot=False)
+                    | Q(is_makeup_slot=True, makeup_requests__status=approved)
+                )
+                .distinct()
+            )
 
         is_student = user.roles.filter(code="student").exists()
         if is_student:
-            return queryset.filter(group__groupstudent__user=user).distinct()
+            # Ученик видит свои регулярные занятия + подтверждённые слоты отработки,
+            # на которые он записан.
+            approved = MakeUpRequest.Status.APPROVED
+            return (
+                queryset.filter(
+                    Q(group__groupstudent__user=user)
+                    | Q(
+                        is_makeup_slot=True,
+                        makeup_requests__student=user,
+                        makeup_requests__status=approved,
+                    )
+                )
+                .distinct()
+            )
 
         return queryset.none()
 
@@ -134,9 +159,7 @@ def create_makeup_request_view(request):
     user = request.user
     is_admin = user.is_superuser or user.roles.filter(code=Role.Code.ADMIN).exists()
     if not is_admin:
-        if absence.student_id == user.id:
-            pass
-        elif user.roles.filter(code=Role.Code.PARENT).exists():
+        if user.roles.filter(code=Role.Code.PARENT).exists():
             parent_profile = getattr(user, "parent_profile", None)
             allowed = parent_profile and parent_profile.students.filter(
                 user_id=absence.student_id
@@ -144,7 +167,7 @@ def create_makeup_request_view(request):
             if not allowed:
                 raise PermissionDenied("Нельзя создавать отработку для чужого ученика")
         else:
-            raise PermissionDenied("Нет доступа к созданию отработки")
+            raise PermissionDenied("Запись на отработку доступна только родителю или администратору")
 
     request_obj = serializer.save()
     return Response({"id": request_obj.id, "status": request_obj.status}, status=status.HTTP_201_CREATED)
@@ -208,6 +231,26 @@ def suggest_makeup_slots_view(request):
         else:
             raise PermissionDenied("Нет доступа к подбору отработки")
 
+    # Правило: запись на отработку доступна, только если пропущенный урок входит
+    # в три последних прошедших занятия ученика.
+    last_lesson_ids = list(
+        AttendanceRecord.objects.filter(
+            student_id=absence.student_id,
+            lesson__starts_at__lte=timezone.now(),
+        )
+        .order_by("-lesson__starts_at")
+        .values_list("lesson_id", flat=True)[:3]
+    )
+    if absence.lesson_id not in last_lesson_ids:
+        return Response(
+            {
+                "absence_record_id": absence.id,
+                "slots": [],
+                "detail": "Запись на отработку доступна только для трёх последних занятий ученика.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
     used_lesson_ids = set(
         MakeUpRequest.objects.filter(student_id=absence.student_id).values_list(
             "makeup_lesson_id", flat=True
@@ -215,27 +258,44 @@ def suggest_makeup_slots_view(request):
     )
 
     now = timezone.now()
+    active_statuses = [
+        MakeUpRequest.Status.REQUESTED,
+        MakeUpRequest.Status.COMPLETED,
+        MakeUpRequest.Status.APPROVED,
+    ]
+    # Отработка может проходить на любой локации — фильтр по локации/теме не нужен.
+    # Возвращаем все свободные будущие слоты с ещё незаполненной вместимостью.
     slots = (
         Lesson.objects.filter(
             is_makeup_slot=True,
-            topic_id=absence.lesson.topic_id,
             starts_at__gte=now,
         )
         .exclude(id__in=used_lesson_ids)
-        .select_related("group", "teacher")
-        .order_by("starts_at")[:3]
+        .select_related("group", "teacher", "location")
+        .order_by("starts_at")
     )
 
-    payload = [
-        {
-            "lesson_id": slot.id,
-            "starts_at": slot.starts_at,
-            "group_id": slot.group_id,
-            "group_name": slot.group.name,
-            "teacher_name": (slot.teacher.get_full_name().strip() or slot.teacher.username),
-        }
-        for slot in slots
-    ]
+    payload = []
+    for slot in slots:
+        booked = MakeUpRequest.objects.filter(
+            makeup_lesson=slot,
+            status__in=active_statuses,
+        ).count()
+        if booked >= (slot.makeup_capacity or 0):
+            continue  # слот уже заполнен
+        payload.append(
+            {
+                "lesson_id": slot.id,
+                "starts_at": slot.starts_at,
+                "group_id": slot.group_id,
+                "group_name": slot.group.name if slot.group_id else "",
+                "teacher_name": (slot.teacher.get_full_name().strip() or slot.teacher.username),
+                "location_id": slot.location_id,
+                "location_name": slot.location.name if slot.location_id else "",
+                "capacity": slot.makeup_capacity,
+                "booked": booked,
+            }
+        )
     return Response({"absence_record_id": absence.id, "slots": payload})
 
 
@@ -304,6 +364,113 @@ def conduct_lesson_view(request, lesson_id):
     return Response(result, status=status.HTTP_200_OK)
 
 
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def teacher_makeup_slots_view(request):
+    """FR (sprint7): преподаватель управляет своими слотами отработок (без привязки к группе).
+
+    GET ?from=YYYY-MM-DD&to=YYYY-MM-DD — список слотов учителя за период.
+    POST {create:[{course_id,location_id,starts_at,capacity}], delete:[lesson_id]} — batch.
+    """
+    user = request.user
+    is_admin = user.is_superuser or user.roles.filter(code=Role.Code.ADMIN).exists()
+    is_teacher = user.roles.filter(code=Role.Code.TEACHER).exists()
+    if not (is_admin or is_teacher):
+        raise PermissionDenied("Только преподаватель или администратор")
+
+    if request.method == "GET":
+        qs = Lesson.objects.filter(is_makeup_slot=True)
+        if not is_admin:
+            qs = qs.filter(teacher=user)
+        date_from = request.query_params.get("from")
+        date_to = request.query_params.get("to")
+        if date_from:
+            qs = qs.filter(starts_at__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(starts_at__date__lte=date_to)
+        qs = qs.select_related("location", "teacher").order_by("starts_at")
+        data = []
+        for lesson in qs:
+            booked = MakeUpRequest.objects.filter(
+                makeup_lesson=lesson,
+                status__in=[MakeUpRequest.Status.REQUESTED, MakeUpRequest.Status.COMPLETED, MakeUpRequest.Status.APPROVED],
+            ).count()
+            data.append({
+                "id": lesson.id,
+                "starts_at": lesson.starts_at,
+                "location_id": lesson.location_id,
+                "location_name": lesson.location.name if lesson.location else None,
+                "teacher_id": lesson.teacher_id,
+                "teacher_name": lesson.teacher.get_full_name().strip() or lesson.teacher.username,
+                "capacity": lesson.makeup_capacity,
+                "booked": booked,
+            })
+        return Response(data)
+
+    # POST batch — учитель/админ создаёт и удаляет слоты отработок
+    creates = request.data.get("create", []) or []
+    deletes = request.data.get("delete", []) or []
+
+    from apps.courses.models import Location as LocationModel
+    from django.utils.dateparse import parse_datetime
+
+    created_ids = []
+    with transaction.atomic():
+        for item in creates:
+            try:
+                location_id = int(item["location_id"])
+                starts_at_raw = item["starts_at"]
+                capacity = int(item.get("capacity", 2))
+                starts_at = parse_datetime(starts_at_raw) if isinstance(starts_at_raw, str) else starts_at_raw
+                if starts_at is None:
+                    raise ValueError("bad datetime")
+                if timezone.is_naive(starts_at):
+                    starts_at = timezone.make_aware(starts_at, timezone.get_current_timezone())
+            except (KeyError, TypeError, ValueError):
+                return Response({"detail": "Некорректный элемент в create"}, status=status.HTTP_400_BAD_REQUEST)
+
+            location = LocationModel.objects.filter(id=location_id, is_active=True).first()
+            if not location:
+                return Response({"detail": "Локация не найдена"}, status=status.HTTP_400_BAD_REQUEST)
+            if capacity < 1 or capacity > 2:
+                return Response({"detail": "Capacity допустим в диапазоне 1..2"}, status=status.HTTP_400_BAD_REQUEST)
+
+            conflict = find_location_conflict(starts_at, location.id, is_makeup_slot=True)
+            if conflict is not None:
+                transaction.set_rollback(True)
+                return Response(
+                    {"detail": f"Конфликт по локации: уже занято — {describe_conflict(conflict)}"},
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+            lesson = Lesson.objects.create(
+                group=None,
+                topic=None,
+                teacher=user,
+                starts_at=starts_at,
+                is_makeup_slot=True,
+                location=location,
+                makeup_capacity=capacity,
+            )
+            created_ids.append(lesson.id)
+
+        if deletes:
+            del_qs = Lesson.objects.filter(id__in=deletes, is_makeup_slot=True)
+            if not is_admin:
+                del_qs = del_qs.filter(teacher=user)
+            blocked = list(
+                del_qs.filter(makeup_requests__isnull=False).values_list("id", flat=True).distinct()
+            )
+            if blocked:
+                return Response(
+                    {"detail": f"Нельзя удалить слоты с бронированиями: {blocked}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            del_qs.delete()
+
+    return Response({"created_ids": created_ids, "deleted": deletes}, status=status.HTTP_200_OK)
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def update_makeup_slots_view(request):
@@ -357,6 +524,12 @@ def setup_group_schedule_view(request):
     teacher = serializer.validated_data["teacher"]
     starts_at_local = serializer.validated_data["starts_at_local"]
 
+    if not group.location_id:
+        return Response(
+            {"detail": "У группы не указана локация — задайте её в карточке группы."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     topic = _get_or_create_placeholder_topic(group)
 
     with transaction.atomic():
@@ -368,19 +541,36 @@ def setup_group_schedule_view(request):
         point = starts_at_local
         end_date = starts_at_local + timedelta(days=365)
         while point <= end_date:
+            existing = Lesson.objects.filter(group=group, starts_at=point).first()
+            if existing is None:
+                conflict = find_location_conflict(point, group.location_id)
+                if conflict is not None:
+                    transaction.set_rollback(True)
+                    return Response(
+                        {"detail": f"Конфликт по локации: уже занято — {describe_conflict(conflict)}"},
+                        status=status.HTTP_409_CONFLICT,
+                    )
+
             lesson, created = Lesson.objects.get_or_create(
                 group=group,
                 starts_at=point,
                 defaults={
                     "teacher": teacher,
                     "topic": topic,
+                    "location": group.location,
                     "is_extra": False,
                 },
             )
             if not created:
+                update_fields = []
                 if lesson.is_extra:
                     lesson.is_extra = False
-                    lesson.save(update_fields=["is_extra"])
+                    update_fields.append("is_extra")
+                if not lesson.location_id and group.location_id:
+                    lesson.location = group.location
+                    update_fields.append("location")
+                if update_fields:
+                    lesson.save(update_fields=update_fields)
             else:
                 created_ids.append(lesson.id)
 
@@ -407,12 +597,26 @@ def add_extra_lesson_view(request):
     teacher = serializer.validated_data["teacher"]
     starts_at = serializer.validated_data["starts_at"]
 
+    if not group.location_id:
+        return Response(
+            {"detail": "У группы не указана локация."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    conflict = find_location_conflict(starts_at, group.location_id)
+    if conflict is not None:
+        return Response(
+            {"detail": f"Конфликт по локации: уже занято — {describe_conflict(conflict)}"},
+            status=status.HTTP_409_CONFLICT,
+        )
+
     topic = _get_or_create_placeholder_topic(group)
 
     lesson = Lesson.objects.create(
         group=group,
         teacher=teacher,
         topic=topic,
+        location=group.location,
         starts_at=starts_at,
         is_extra=True,
     )
@@ -489,3 +693,24 @@ def teacher_salary_view(request):
             "lessons": response_data,
         }
     )
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def makeup_invite_details_view(request, token):
+    """FR-11: публично возвращает детали приглашения по токену (для UI подтверждения)."""
+    details = get_invite_details(token)
+    if details is None:
+        return Response({"detail": "Приглашение не найдено"}, status=status.HTTP_404_NOT_FOUND)
+    return Response(details)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def makeup_invite_accept_view(request, token):
+    """FR-11: применить токен — создать MakeUpRequest в один клик."""
+    result = accept_invite(token)
+    if not result.get("ok"):
+        code = result.get("code", "error")
+        return Response({"detail": code}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(result)

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import { AdminLayout } from './AdminLayout';
+import { AdminGroupModal } from './AdminGroupModal';
 
 const WEEKDAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
@@ -78,6 +79,8 @@ export const AdminGroups = () => {
   const [courses, setCourses] = useState([]);
   const [groups, setGroups] = useState([]);
   const [users, setUsers] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [topics, setTopics] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [savingGroup, setSavingGroup] = useState(false);
@@ -94,6 +97,7 @@ export const AdminGroups = () => {
   const [groupForm, setGroupForm] = useState({
     name: '',
     course: '',
+    location: '',
     is_active: true,
     teacher_ids: [],
     student_ids: [],
@@ -108,12 +112,6 @@ export const AdminGroups = () => {
     () => users.filter((item) => Array.isArray(item?.roles) && item.roles.includes('student')),
     [users],
   );
-
-  const courseMap = useMemo(() => {
-    const map = new Map();
-    courses.forEach((course) => map.set(course.id, course));
-    return map;
-  }, [courses]);
 
   const userLabel = (item) => {
     if (!item) return '-';
@@ -134,23 +132,30 @@ export const AdminGroups = () => {
     setLoading(true);
     setError('');
     try {
-      const [coursesData, groupsData, usersData] = await Promise.all([
+      const [coursesData, groupsData, usersData, locationsData, topicsData] = await Promise.all([
         api.getCourses(),
         api.getGroups(),
         api.getUsers(),
+        api.getLocations(),
+        api.getLessonTopics(),
       ]);
 
       const safeCourses = Array.isArray(coursesData) ? coursesData : [];
       const safeGroups = Array.isArray(groupsData) ? groupsData : [];
       const safeUsers = Array.isArray(usersData) ? usersData : [];
+      const safeLocations = Array.isArray(locationsData) ? locationsData : [];
+      const safeTopics = Array.isArray(topicsData) ? topicsData : [];
 
       setCourses(safeCourses);
       setGroups(safeGroups);
       setUsers(safeUsers);
+      setLocations(safeLocations);
+      setTopics(safeTopics);
 
       setGroupForm((prev) => ({
         ...prev,
         course: prev.course || safeCourses[0]?.id || '',
+        location: prev.location || safeLocations[0]?.id || '',
       }));
     } catch (loadError) {
       setError(loadError.message || 'Не удалось загрузить данные групп.');
@@ -204,11 +209,17 @@ export const AdminGroups = () => {
       return;
     }
 
+    if (!groupForm.location) {
+      setError('Выберите локацию группы.');
+      return;
+    }
+
     setSavingGroup(true);
     try {
       await api.createGroup({
         name: groupForm.name.trim(),
         course: Number(groupForm.course),
+        location: Number(groupForm.location),
         is_active: groupForm.is_active,
         teacher_ids: groupForm.teacher_ids,
         student_ids: groupForm.student_ids,
@@ -253,6 +264,21 @@ export const AdminGroups = () => {
                     onChange={(event) => setGroupForm((prev) => ({ ...prev, name: event.target.value }))}
                     disabled={loading || savingGroup}
                   />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label">Локация *</label>
+                  <select
+                    className="form-select"
+                    value={groupForm.location}
+                    onChange={(event) => setGroupForm((prev) => ({ ...prev, location: event.target.value }))}
+                    disabled={loading || savingGroup}
+                  >
+                    <option value="">— выберите локацию —</option>
+                    {locations.map((loc) => (
+                      <option key={loc.id} value={loc.id}>{loc.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <SearchableMultiSelect
@@ -346,6 +372,7 @@ export const AdminGroups = () => {
                       <tr>
                         <th>#</th>
                         <th>Группа</th>
+                        <th>Локация</th>
                         <th>Преподавателей</th>
                         <th>Учеников</th>
                         <th>Слот</th>
@@ -357,6 +384,7 @@ export const AdminGroups = () => {
                         <tr key={group.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedGroup(group)}>
                           <td>{group.id}</td>
                           <td>{group.name}</td>
+                          <td>{group.location_name || <span className="text-danger">не задана</span>}</td>
                           <td>{Array.isArray(group.teachers) ? group.teachers.length : 0}</td>
                           <td>{Array.isArray(group.students) ? group.students.length : 0}</td>
                           <td>{renderGroupSlot(group)}</td>
@@ -373,70 +401,24 @@ export const AdminGroups = () => {
       </div>
 
       {selectedGroup ? (
-        <>
-          <div className="modal-backdrop show" onClick={() => setSelectedGroup(null)} />
-          <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true">
-            <div className="modal-dialog modal-lg modal-dialog-centered">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Информация о группе #{selectedGroup.id}</h5>
-                  <button type="button" className="btn-close" onClick={() => setSelectedGroup(null)} />
-                </div>
-                <div className="modal-body">
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <div><strong>Название:</strong> {selectedGroup.name}</div>
-                      <div><strong>Статус:</strong> {selectedGroup.is_active ? 'Активна' : 'Неактивна'}</div>
-                      <div><strong>Слот:</strong> {renderGroupSlot(selectedGroup)}</div>
-                    </div>
-                    <div className="col-md-6">
-                      <div>
-                        <strong>Курс (системный):</strong>{' '}
-                        {courseMap.get(selectedGroup.course)?.name || `ID ${selectedGroup.course}`}
-                      </div>
-                      <div><strong>Количество преподавателей:</strong> {Array.isArray(selectedGroup.teachers) ? selectedGroup.teachers.length : 0}</div>
-                      <div><strong>Количество учеников:</strong> {Array.isArray(selectedGroup.students) ? selectedGroup.students.length : 0}</div>
-                    </div>
-                  </div>
-
-                  <hr />
-
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <h6>Преподаватели</h6>
-                      {Array.isArray(selectedGroup.teachers) && selectedGroup.teachers.length > 0 ? (
-                        <ul className="mb-0">
-                          {selectedGroup.teachers.map((teacher) => (
-                            <li key={teacher.id}>{userLabel(teacher)}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <div className="text-muted">Не назначены</div>
-                      )}
-                    </div>
-                    <div className="col-md-6">
-                      <h6>Ученики</h6>
-                      {Array.isArray(selectedGroup.students) && selectedGroup.students.length > 0 ? (
-                        <ul className="mb-0" style={{ maxHeight: '220px', overflow: 'auto' }}>
-                          {selectedGroup.students.map((student) => (
-                            <li key={student.id}>{userLabel(student)}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <div className="text-muted">Не назначены</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setSelectedGroup(null)}>
-                    Закрыть
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
+        <AdminGroupModal
+          group={selectedGroup}
+          locations={locations}
+          teachers={teachers}
+          students={students}
+          topics={topics}
+          onClose={() => setSelectedGroup(null)}
+          onChanged={async () => {
+            await loadData();
+            // обновляем выбранную группу свежими данными
+            const fresh = await api.getGroups();
+            if (Array.isArray(fresh)) {
+              const updated = fresh.find((g) => g.id === selectedGroup.id);
+              if (updated) setSelectedGroup(updated);
+              else setSelectedGroup(null);
+            }
+          }}
+        />
       ) : null}
     </AdminLayout>
   );

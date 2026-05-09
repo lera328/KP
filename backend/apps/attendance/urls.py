@@ -9,6 +9,8 @@ from .views import (
     admin_makeups_view,
     conduct_lesson_view,
     create_makeup_request_view,
+    makeup_invite_accept_view,
+    makeup_invite_details_view,
     mark_attendance_view,
     my_attendance_view,
     teacher_salary_view,
@@ -16,6 +18,7 @@ from .views import (
     parent_makeups_view,
     setup_group_schedule_view,
     suggest_makeup_slots_view,
+    teacher_makeup_slots_view,
     update_makeup_slots_view,
 )
 
@@ -36,4 +39,7 @@ urlpatterns = [
     path("makeups/parent/", parent_makeups_view, name="makeups-parent"),
     path("makeups/admin/", admin_makeups_view, name="makeups-admin"),
     path("makeups/<int:request_id>/approve/", approve_makeup_view, name="makeups-approve"),
+    path("makeups/invites/<str:token>/", makeup_invite_details_view, name="makeups-invite-details"),
+    path("makeups/invites/<str:token>/accept/", makeup_invite_accept_view, name="makeups-invite-accept"),
+    path("teacher/makeup-slots/", teacher_makeup_slots_view, name="teacher-makeup-slots"),
 ]

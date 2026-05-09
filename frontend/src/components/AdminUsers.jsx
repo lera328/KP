@@ -668,7 +668,9 @@ export const AdminUsers = () => {
 
                     <div className="row">
                       <div className="col-md-6 mb-3">
-                        <label className="form-label">Телефон</label>
+                        <label className="form-label">
+                          Телефон{createForm.role === 'parent' ? ' *' : ''}
+                        </label>
                         <input
                           type="text"
                           className="form-control"
@@ -676,7 +678,13 @@ export const AdminUsers = () => {
                           value={createForm.phone}
                           onChange={updateCreateField}
                           disabled={savingCreate}
+                          required={createForm.role === 'parent'}
                         />
+                        {createForm.role === 'parent' ? (
+                          <div className="form-text">
+                            Для роли «Родитель» номер телефона обязателен.
+                          </div>
+                        ) : null}
                       </div>
                       <div className="col-md-6 mb-3">
                         <label className="form-label">Telegram ID</label>
@@ -825,7 +833,9 @@ export const AdminUsers = () => {
 
                     <div className="row">
                       <div className="col-md-6 mb-3">
-                        <label className="form-label">Телефон</label>
+                        <label className="form-label">
+                          Телефон{editForm.role === 'parent' ? ' *' : ''}
+                        </label>
                         <input
                           type="text"
                           className="form-control"
@@ -833,7 +843,13 @@ export const AdminUsers = () => {
                           value={editForm.phone}
                           onChange={updateEditField}
                           disabled={savingEdit}
+                          required={editForm.role === 'parent'}
                         />
+                        {editForm.role === 'parent' ? (
+                          <div className="form-text">
+                            Для роли «Родитель» номер телефона обязателен.
+                          </div>
+                        ) : null}
                       </div>
                       <div className="col-md-6 mb-3">
                         <label className="form-label">Telegram ID</label>

@@ -324,7 +324,11 @@ export const TeacherSchedule = () => {
                                   <div key={lesson.id} className={cardClassName}>
                                     <div className="card-body p-2">
                                       <div className="fw-semibold">{formatTime(lesson.starts_at)}</div>
-                                      <div className="small mb-2">{group?.name || `Группа #${lesson.group}`}</div>
+                                      <div className="small mb-2">
+                                        {lesson.is_makeup_slot
+                                          ? 'Слот отработки'
+                                          : group?.name || lesson.group_name || (lesson.group ? `Группа #${lesson.group}` : 'Занятие')}
+                                      </div>
                                       <div className="d-flex flex-wrap gap-1 mb-2">
                                         {lesson.is_makeup_slot ? (
                                           <span className="badge text-bg-warning">Отработка</span>
@@ -337,7 +341,12 @@ export const TeacherSchedule = () => {
                                           <span className="badge text-bg-light">Не проведён</span>
                                         )}
                                       </div>
-                                      <div className="small mb-2">Тема: {lesson.conducted_topic || '-'}</div>
+                                      <div className="small mb-2">
+                                        Тема:{' '}
+                                        {lesson.is_makeup_slot
+                                          ? lesson.makeup_topics || '-'
+                                          : lesson.conducted_topic || '-'}
+                                      </div>
                                       <button className="btn btn-primary btn-sm w-100" onClick={() => openConductModal(lesson)}>
                                         Провести
                                       </button>

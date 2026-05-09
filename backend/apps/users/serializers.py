@@ -53,6 +53,15 @@ class UserCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"roles": "У пользователя должна быть ровно одна роль."})
 
         is_student = Role.Code.STUDENT in role_codes
+        is_parent = Role.Code.PARENT in role_codes
+
+        if is_parent:
+            phone = (attrs.get("phone") or "").strip()
+            if not phone:
+                raise serializers.ValidationError(
+                    {"phone": "Для родителя номер телефона обязателен."}
+                )
+
         if is_student:
             if len(group_ids) != 1:
                 raise serializers.ValidationError({"group_ids": "Ученик должен быть прикреплен ровно к одной группе."})
@@ -124,6 +133,17 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"roles": "У пользователя должна быть ровно одна роль."})
 
         is_student = Role.Code.STUDENT in role_codes
+        is_parent = Role.Code.PARENT in role_codes
+
+        if is_parent:
+            # phone может прийти в attrs, иначе берём сохранённый у юзера
+            phone_in_payload = attrs.get("phone")
+            resolved_phone = phone_in_payload if phone_in_payload is not None else (self.instance.phone or "")
+            if not (resolved_phone or "").strip():
+                raise serializers.ValidationError(
+                    {"phone": "Для родителя номер телефона обязателен."}
+                )
+
         has_group_ids_in_payload = "group_ids" in attrs
         group_ids = attrs.get("group_ids")
 

@@ -377,6 +377,19 @@ class APIService {
     });
   }
 
+  async updateGroup(groupId, groupData) {
+    return this.request(`/groups/${groupId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(groupData),
+    });
+  }
+
+  async deleteGroup(groupId) {
+    return this.request(`/groups/${groupId}/`, {
+      method: 'DELETE',
+    });
+  }
+
   // Attendance endpoints
   async getLessons() {
     return this.request('/lessons/');
@@ -442,6 +455,25 @@ class APIService {
     return this.request('/lessons/makeup-slots/', {
       method: 'POST',
       body: JSON.stringify({ lesson_ids: lessonIds }),
+    });
+  }
+
+  async getLocations() {
+    return this.request('/locations/');
+  }
+
+  async getTeacherMakeupSlots({ from, to } = {}) {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    const query = params.toString();
+    return this.request(`/teacher/makeup-slots/${query ? `?${query}` : ''}`);
+  }
+
+  async saveTeacherMakeupSlots({ create = [], delete: deleteIds = [] } = {}) {
+    return this.request('/teacher/makeup-slots/', {
+      method: 'POST',
+      body: JSON.stringify({ create, delete: deleteIds }),
     });
   }
 

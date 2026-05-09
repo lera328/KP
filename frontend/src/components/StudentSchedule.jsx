@@ -62,7 +62,10 @@ export const StudentSchedule = () => {
       .filter((lesson) => {
         if (!lesson.starts_at) return false;
         const dt = new Date(lesson.starts_at);
-        return dt >= weekRange.monday && dt <= weekRange.sunday && groupIds.has(lesson.group);
+        if (dt < weekRange.monday || dt > weekRange.sunday) return false;
+        // Слоты отработки: бэк уже фильтрует, что у ученика есть подтверждённая заявка
+        if (lesson.is_makeup_slot) return true;
+        return groupIds.has(lesson.group);
       })
       .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
   }, [lessons, weekRange, groupIds]);
@@ -158,16 +161,28 @@ export const StudentSchedule = () => {
                   ) : (
                     <div className="d-flex flex-column gap-2">
                       {day.lessons.map((lesson) => {
-                        const groupName = groupMap.get(lesson.group)?.name || `Группа #${lesson.group}`;
+                        const isMakeup = Boolean(lesson.is_makeup_slot);
+                        const group = groupMap.get(lesson.group);
+                        const title = isMakeup
+                          ? 'Отработка'
+                          : group?.name || lesson.group_name || (lesson.group ? `Группа #${lesson.group}` : 'Занятие');
                         return (
                           <div
                             key={lesson.id}
-                            className="border rounded p-2 bg-light-subtle"
+                            className={`border rounded p-2 ${isMakeup ? 'bg-info-subtle' : 'bg-light-subtle'}`}
                             style={{ fontSize: '0.85rem' }}
                           >
                             <div className="fw-bold text-primary">{formatTime(lesson.starts_at)}</div>
-                            <div className="small">{groupName}</div>
-                            {lesson.location && <div className="text-muted small">📍 {lesson.location}</div>}
+                            <div className="small">
+                              {isMakeup ? <span className="badge text-bg-info me-1">Отработка</span> : null}
+                              {title}
+                            </div>
+                            {isMakeup && lesson.makeup_topics ? (
+                              <div className="small fst-italic">📘 {lesson.makeup_topics}</div>
+                            ) : null}
+                            {lesson.location_name ? (
+                              <div className="text-muted small">📍 {lesson.location_name}</div>
+                            ) : null}
                           </div>
                         );
                       })}

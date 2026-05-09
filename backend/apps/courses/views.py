@@ -3,8 +3,14 @@ from rest_framework.permissions import IsAuthenticated
 
 from apps.users.permissions import IsAdminRole
 
-from .models import Course, Group
-from .serializers import CourseSerializer, GroupSerializer
+from .models import Course, Group, Location
+from .serializers import CourseSerializer, GroupSerializer, LocationSerializer
+
+
+class LocationListView(generics.ListAPIView):
+    queryset = Location.objects.filter(is_active=True).order_by("name")
+    serializer_class = LocationSerializer
+    permission_classes = [IsAuthenticated]
 
 
 class CourseListCreateView(generics.ListCreateAPIView):
