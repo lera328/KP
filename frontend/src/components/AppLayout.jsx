@@ -10,6 +10,7 @@ export const adminNavItems = [
   { label: 'Посещаемость', path: '/admin/attendance' },
   { label: 'Отработки', path: '/admin/makeups' },
   { label: 'Уведомления', path: '/admin/notifications' },
+  { label: 'Риск оттока', path: '/admin/churn-risk' },
   { label: 'Проекты', path: '/projects' },
 ];
 

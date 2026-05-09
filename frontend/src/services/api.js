@@ -194,6 +194,10 @@ class APIService {
     });
   }
 
+  async getChurnRisk() {
+    return this.request('/auth/users/churn-risk/');
+  }
+
   async getProfile() {
     return this.request('/auth/profile/');
   }

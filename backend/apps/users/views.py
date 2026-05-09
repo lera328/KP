@@ -20,6 +20,7 @@ from .auth_services import (
     issue_admin_reset,
     request_password_reset,
 )
+from .churn import compute_churn_report
 from .permissions import IsAdminRole
 from .models import User, Role, StudentProfile
 from .models import StudentProject, StudentProjectLike, StudentProjectImage
@@ -458,5 +459,12 @@ def admin_reset_user_password_view(request, user_id):
         },
         status=status.HTTP_200_OK,
     )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsAdminRole])
+def churn_risk_view(request):
+    """FR-09: отчёт по ученикам с риском оттока."""
+    return Response(compute_churn_report())
 
 
