@@ -198,6 +198,41 @@ class APIService {
     return this.request('/auth/users/churn-risk/');
   }
 
+  async getDashboardMetrics({ from, to, groupId } = {}) {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    if (groupId) params.set('group_id', groupId);
+    const query = params.toString();
+    return this.request(`/auth/dashboard/metrics/${query ? `?${query}` : ''}`);
+  }
+
+  async downloadDashboardCsv({ from, to, groupId } = {}) {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    if (groupId) params.set('group_id', groupId);
+    const query = params.toString();
+    const response = await fetch(
+      `${this.baseURL}/auth/dashboard/export.csv${query ? `?${query}` : ''}`,
+      { headers: this.getHeaders() },
+    );
+    if (response.status === 401) {
+      this.clearToken();
+      window.location.href = '/login';
+      return null;
+    }
+    if (!response.ok) {
+      const errorPayload = await response.json().catch(() => null);
+      throw new Error(formatApiErrorMessage(errorPayload));
+    }
+    const blob = await response.blob();
+    const disposition = response.headers.get('content-disposition') || '';
+    const match = disposition.match(/filename="?([^";]+)"?/i);
+    const filename = match ? match[1] : 'kiberone_report.csv';
+    return { blob, filename };
+  }
+
   async getProfile() {
     return this.request('/auth/profile/');
   }

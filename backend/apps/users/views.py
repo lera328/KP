@@ -20,6 +20,7 @@ from .auth_services import (
     issue_admin_reset,
     request_password_reset,
 )
+from .analytics import compute_dashboard_metrics, render_dashboard_csv
 from .churn import compute_churn_report
 from .permissions import IsAdminRole
 from .models import User, Role, StudentProfile
@@ -464,7 +465,37 @@ def admin_reset_user_password_view(request, user_id):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated, IsAdminRole])
 def churn_risk_view(request):
-    """FR-09: отчёт по ученикам с риском оттока."""
+    """FR-10: отчёт по ученикам с риском оттока."""
     return Response(compute_churn_report())
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsAdminRole])
+def dashboard_metrics_view(request):
+    """FR-12: метрики для админ-дашборда (KPI + разбивка по группам)."""
+    metrics = compute_dashboard_metrics(
+        date_from_str=request.query_params.get("from"),
+        date_to_str=request.query_params.get("to"),
+        group_id=request.query_params.get("group_id") or None,
+    )
+    return Response(metrics)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsAdminRole])
+def dashboard_export_csv_view(request):
+    """FR-12: экспорт сводного отчёта за период в CSV."""
+    body = render_dashboard_csv(
+        date_from_str=request.query_params.get("from"),
+        date_to_str=request.query_params.get("to"),
+        group_id=request.query_params.get("group_id") or None,
+    )
+    response = HttpResponse(body, content_type="text/csv; charset=utf-8")
+    period_from = request.query_params.get("from") or "period"
+    period_to = request.query_params.get("to") or "now"
+    response["Content-Disposition"] = (
+        f'attachment; filename="kiberone_report_{period_from}_{period_to}.csv"'
+    )
+    return response
 
 

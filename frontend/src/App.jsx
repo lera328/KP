@@ -26,6 +26,7 @@ import { AdminNotifications } from './components/AdminNotifications';
 import { AdminMakeups } from './components/AdminMakeups';
 import { AdminCourses } from './components/AdminCourses';
 import AdminChurnRisk from './components/AdminChurnRisk';
+import AdminAnalytics from './components/AdminAnalytics';
 
 /**
  * Main App - sets up routing and auth context
@@ -150,6 +151,7 @@ function AdminRoutes() {
       <Route path="makeups" element={<AdminMakeups />} />
       <Route path="notifications" element={<AdminNotifications />} />
       <Route path="churn-risk" element={<AdminChurnRisk />} />
+      <Route path="analytics" element={<AdminAnalytics />} />
     </Routes>
   );
 }
