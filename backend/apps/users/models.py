@@ -22,6 +22,32 @@ class User(AbstractUser):
     phone = models.CharField(max_length=20, blank=True)
     telegram_chat_id = models.CharField(max_length=64, blank=True)
     roles = models.ManyToManyField(Role, related_name="users", blank=True)
+    must_change_password = models.BooleanField(
+        default=False,
+        help_text="Пользователь обязан сменить пароль при следующем входе.",
+    )
+
+
+class PasswordResetToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="password_reset_tokens")
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    TTL_HOURS = 2
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    @property
+    def is_valid(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        if self.used_at:
+            return False
+        return self.created_at >= timezone.now() - timedelta(hours=self.TTL_HOURS)
 
 
 class StudentProfile(models.Model):

@@ -1,0 +1,23 @@
+# KiberOne — заметки по разработке
+
+## Sprint 3 — выполнен
+- must_change_password + PasswordResetToken (email-reset)
+- Admin-reset с одноразовым паролем
+- Force-change-password страница и редиректы
+- Email через Resend HTTPS API (django-anymail) — порты SMTP заблокированы провайдером
+- iCal-функционал удалён по запросу
+
+## Backlog (отложено)
+
+### Email-домен в Resend (важно перед боевой рассылкой)
+Сейчас free-тариф Resend позволяет слать только на `shulginalera2@yandex.ru` —
+это адрес-владелец аккаунта. Для рассылок ученикам/родителям нужно:
+1. Подтвердить свой домен в https://resend.com/domains
+   - либо купить домен (~150-300 ₽/год: reg.ru, beget, namecheap)
+   - либо использовать поддомен (mail.example.com), если домен уже есть
+2. Прописать DNS-записи (TXT для SPF/DKIM, иногда CNAME) — Resend выдаёт готовый список.
+3. Дождаться верификации (5-30 минут).
+4. В `.env` поменять `DEFAULT_FROM_EMAIL=KiberOne <noreply@твой-домен>`.
+5. Перезапустить backend.
+
+После этого 403 «testing emails to your own email» уйдёт, можно слать кому угодно.

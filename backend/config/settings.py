@@ -17,6 +17,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "anymail",
     "apps.core",
     "apps.users",
     "apps.courses",
@@ -87,6 +88,35 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
 }
+
+# Email backend выбирается автоматически:
+#   1) RESEND_API_KEY — отправка через Resend HTTPS API (обходит блокировку SMTP-портов).
+#   2) EMAIL_HOST — стандартный SMTP.
+#   3) Иначе console-бэкенд: письма попадают в логи backend.
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+if os.getenv("DJANGO_EMAIL_BACKEND"):
+    EMAIL_BACKEND = os.getenv("DJANGO_EMAIL_BACKEND")
+elif RESEND_API_KEY:
+    EMAIL_BACKEND = "anymail.backends.resend.EmailBackend"
+elif os.getenv("EMAIL_HOST"):
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+ANYMAIL = {
+    "RESEND_API_KEY": RESEND_API_KEY,
+}
+
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "0") == "1"
+EMAIL_USE_TLS = (not EMAIL_USE_SSL) and os.getenv("EMAIL_USE_TLS", "1") == "1"
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "KiberOne <onboarding@resend.dev>")
+
+# Базовый URL для писем со ссылками (frontend)
+PUBLIC_FRONTEND_URL = os.getenv("PUBLIC_FRONTEND_URL", "http://localhost:5173")
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 PAYMENT_REMINDER_LESSON_THRESHOLD = int(os.getenv("PAYMENT_REMINDER_LESSON_THRESHOLD", "3"))

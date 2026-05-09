@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export const LoginForm = () => {
@@ -17,8 +17,12 @@ export const LoginForm = () => {
     setLoading(true);
 
     try {
-      await login(identifier, password);
-      navigate('/dashboard');
+      const profile = await login(identifier, password);
+      if (profile?.must_change_password) {
+        navigate('/force-change-password');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.message || 'Не удалось войти. Попробуйте ещё раз.');
     } finally {
@@ -78,6 +82,12 @@ export const LoginForm = () => {
                   {loading ? 'Входим...' : 'Войти'}
                 </button>
               </form>
+
+              <div className="text-center mt-3">
+                <Link to="/forgot-password" className="text-decoration-none small">
+                  Забыли пароль?
+                </Link>
+              </div>
             </div>
           </div>
         </div>

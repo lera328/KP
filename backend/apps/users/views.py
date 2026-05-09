@@ -15,6 +15,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.http import HttpResponse, Http404
 from django.shortcuts import render
 
+from .auth_services import (
+    confirm_password_reset,
+    issue_admin_reset,
+    request_password_reset,
+)
 from .permissions import IsAdminRole
 from .models import User, Role, StudentProfile
 from .models import StudentProject, StudentProjectLike, StudentProjectImage
@@ -390,3 +395,68 @@ def public_portfolio_view(request, token):
 
     context = build_portfolio_context(profile.user, request=request)
     return render(request, "users/portfolio_pdf.html", context)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def password_reset_request_view(request):
+    email = (request.data.get("email") or "").strip()
+    request_password_reset(email, request=request)
+    # Никогда не палим, существует ли email — отвечаем одинаково
+    return Response(
+        {"detail": "Если такой email зарегистрирован, на него отправлено письмо со ссылкой для сброса пароля."},
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def password_reset_confirm_view(request):
+    token = request.data.get("token") or ""
+    new_password = request.data.get("new_password") or ""
+    try:
+        confirm_password_reset(token, new_password)
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"detail": "Пароль успешно изменён."}, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def change_password_view(request):
+    user = request.user
+    old_password = request.data.get("old_password") or ""
+    new_password = request.data.get("new_password") or ""
+
+    if not user.must_change_password:
+        # Обычная смена — проверяем старый пароль
+        if not user.check_password(old_password):
+            return Response({"detail": "Текущий пароль указан неверно."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if len(new_password) < 8:
+        return Response(
+            {"detail": "Пароль должен быть не короче 8 символов."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user.set_password(new_password)
+    user.must_change_password = False
+    user.save(update_fields=["password", "must_change_password"])
+    return Response({"detail": "Пароль обновлён."}, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated, IsAdminRole])
+def admin_reset_user_password_view(request, user_id):
+    target = get_object_or_404(User, id=user_id)
+    new_password = issue_admin_reset(target)
+    return Response(
+        {
+            "detail": "Сгенерирован одноразовый пароль. Передайте его пользователю — при первом входе он обязан будет сменить пароль.",
+            "username": target.username,
+            "one_time_password": new_password,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+

@@ -70,6 +70,17 @@ export const AuthProvider = ({ children }) => {
     );
   };
 
+  const refreshProfile = async () => {
+    try {
+      const profile = await api.getProfile();
+      setUser(profile);
+      return profile;
+    } catch (err) {
+      console.error('Profile refresh failed:', err);
+      return null;
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -78,6 +89,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     isAuthenticated: !!user,
     hasRole,
+    refreshProfile,
   };
 
   return (

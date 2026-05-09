@@ -2,6 +2,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute, RoleRoute } from './components/ProtectedRoute';
 import { LoginForm } from './components/LoginForm';
+import { ForgotPassword } from './components/ForgotPassword';
+import { ResetPassword } from './components/ResetPassword';
+import { ForceChangePassword } from './components/ForceChangePassword';
 import { Dashboard } from './components/Dashboard';
 import { AdminUsers } from './components/AdminUsers';
 import { TeacherAttendance } from './components/TeacherAttendance';
@@ -50,6 +53,16 @@ function AppRoutes() {
     <Routes>
       {/* Public routes */}
       <Route path="/login" element={<LoginForm />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password/:token" element={<ResetPassword />} />
+      <Route
+        path="/force-change-password"
+        element={
+          <ProtectedRoute allowDuringForceChange>
+            <ForceChangePassword />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
       {/* Protected routes */}

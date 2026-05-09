@@ -2,11 +2,15 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .views import (
+    admin_reset_user_password_view,
+    change_password_view,
     create_user_view,
     logout_view,
     parent_attendance_view,
     parent_billing_view,
     parent_children_view,
+    password_reset_confirm_view,
+    password_reset_request_view,
     profile_view,
     project_like_view,
     projects_feed_view,
@@ -20,8 +24,12 @@ urlpatterns = [
     path("session-login/", session_login_view, name="session-login"),
     path("logout/", logout_view, name="logout"),
     path("profile/", profile_view, name="profile"),
+    path("password/reset-request/", password_reset_request_view, name="password-reset-request"),
+    path("password/reset-confirm/", password_reset_confirm_view, name="password-reset-confirm"),
+    path("password/change/", change_password_view, name="password-change"),
     path("users/", create_user_view, name="create-user"),
     path("users/<int:user_id>/", update_user_view, name="update-user"),
+    path("users/<int:user_id>/reset-password/", admin_reset_user_password_view, name="admin-reset-user-password"),
     path("parent/children/", parent_children_view, name="parent-children"),
     path("parent/attendance/", parent_attendance_view, name="parent-attendance"),
     path("parent/billing/", parent_billing_view, name="parent-billing"),

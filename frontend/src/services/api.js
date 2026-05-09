@@ -166,6 +166,34 @@ class APIService {
     return this.request('/auth/logout/', { method: 'POST' });
   }
 
+  async requestPasswordReset(email) {
+    return this.request('/auth/password/reset-request/', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async confirmPasswordReset(token, newPassword) {
+    return this.request('/auth/password/reset-confirm/', {
+      method: 'POST',
+      body: JSON.stringify({ token, new_password: newPassword }),
+    });
+  }
+
+  async changeOwnPassword({ oldPassword, newPassword }) {
+    return this.request('/auth/password/change/', {
+      method: 'POST',
+      body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+    });
+  }
+
+  async adminResetUserPassword(userId) {
+    return this.request(`/auth/users/${userId}/reset-password/`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
   async getProfile() {
     return this.request('/auth/profile/');
   }

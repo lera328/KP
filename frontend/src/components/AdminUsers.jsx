@@ -59,6 +59,8 @@ export const AdminUsers = () => {
   const [savingEdit, setSavingEdit] = useState(false);
 
   const [deletingUserId, setDeletingUserId] = useState(null);
+  const [resettingUserId, setResettingUserId] = useState(null);
+  const [generatedPassword, setGeneratedPassword] = useState(null);
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -308,6 +310,30 @@ export const AdminUsers = () => {
     }
   };
 
+  const handleResetPassword = async (targetUser) => {
+    const confirmed = window.confirm(
+      `Сгенерировать одноразовый пароль для ${targetUser.username || targetUser.id}?\n\n` +
+        'Старый пароль перестанет работать. При следующем входе пользователь обязан будет сменить пароль.',
+    );
+    if (!confirmed) return;
+
+    setError('');
+    setSuccess('');
+    setResettingUserId(targetUser.id);
+    try {
+      const response = await api.adminResetUserPassword(targetUser.id);
+      setGeneratedPassword({
+        username: response?.username || targetUser.username,
+        password: response?.one_time_password,
+      });
+      setSuccess('Одноразовый пароль выдан. Передайте его пользователю.');
+    } catch (resetError) {
+      setError(resetError.message || 'Не удалось сбросить пароль.');
+    } finally {
+      setResettingUserId(null);
+    }
+  };
+
   const handleDeleteUser = async (targetUser) => {
     const confirmed = window.confirm(
       `Удалить пользователя ${targetUser.username || targetUser.id}?\n\n` +
@@ -336,6 +362,41 @@ export const AdminUsers = () => {
     <AdminLayout title="Управление пользователями">
       {error ? <div className="alert alert-danger">{error}</div> : null}
       {success ? <div className="alert alert-success">{success}</div> : null}
+
+      {generatedPassword ? (
+        <div className="alert alert-warning d-flex align-items-start justify-content-between flex-wrap gap-2">
+          <div>
+            <div>
+              <strong>Одноразовый пароль для {generatedPassword.username}:</strong>{' '}
+              <code style={{ fontSize: '1.05em' }}>{generatedPassword.password}</code>
+            </div>
+            <div className="small text-muted">
+              Передайте пароль пользователю. При входе он будет обязан задать новый.
+              Это сообщение исчезнет, когда вы его закроете.
+            </div>
+          </div>
+          <div className="d-flex gap-2">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary"
+              onClick={() => {
+                if (navigator?.clipboard?.writeText) {
+                  navigator.clipboard.writeText(generatedPassword.password || '');
+                }
+              }}
+            >
+              Скопировать
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-dark"
+              onClick={() => setGeneratedPassword(null)}
+            >
+              Закрыть
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="card mb-3">
         <div className="card-body d-flex flex-wrap gap-2 justify-content-between align-items-center">
@@ -418,6 +479,7 @@ export const AdminUsers = () => {
                       : '-';
                     const isCurrentUser = currentUser?.id === row.id;
                     const isDeleting = deletingUserId === row.id;
+                    const isResetting = resettingUserId === row.id;
 
                     return (
                       <tr key={row.id} style={{ cursor: 'pointer' }} onClick={() => openViewUser(row)}>
@@ -435,9 +497,20 @@ export const AdminUsers = () => {
                                 event.stopPropagation();
                                 openEditUser(row);
                               }}
-                              disabled={isDeleting}
+                              disabled={isDeleting || isResetting}
                             >
                               Редактировать
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-outline-warning btn-sm"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleResetPassword(row);
+                              }}
+                              disabled={isCurrentUser || isDeleting || isResetting}
+                            >
+                              {isResetting ? 'Сброс…' : 'Сбросить пароль'}
                             </button>
                             <button
                               type="button"
@@ -446,7 +519,7 @@ export const AdminUsers = () => {
                                 event.stopPropagation();
                                 handleDeleteUser(row);
                               }}
-                              disabled={isCurrentUser || isDeleting}
+                              disabled={isCurrentUser || isDeleting || isResetting}
                             >
                               {isDeleting ? 'Удаляем...' : 'Удалить'}
                             </button>

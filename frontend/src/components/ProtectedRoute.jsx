@@ -5,8 +5,8 @@ import { useAuth } from '../context/AuthContext';
 /**
  * ProtectedRoute - restricts access to authenticated users
  */
-export const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+export const ProtectedRoute = ({ children, allowDuringForceChange = false }) => {
+  const { isAuthenticated, loading, user } = useAuth();
 
   if (loading) {
     return <div className="container text-center mt-5">Загрузка...</div>;
@@ -14,6 +14,10 @@ export const ProtectedRoute = ({ children }) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (user?.must_change_password && !allowDuringForceChange) {
+    return <Navigate to="/force-change-password" replace />;
   }
 
   return children;
@@ -23,7 +27,7 @@ export const ProtectedRoute = ({ children }) => {
  * RoleRoute - restricts access by user role
  */
 export const RoleRoute = ({ children, requiredRole }) => {
-  const { isAuthenticated, loading, hasRole } = useAuth();
+  const { isAuthenticated, loading, hasRole, user } = useAuth();
 
   if (loading) {
     return <div className="container text-center mt-5">Загрузка...</div>;
@@ -31,6 +35,10 @@ export const RoleRoute = ({ children, requiredRole }) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (user?.must_change_password) {
+    return <Navigate to="/force-change-password" replace />;
   }
 
   if (!hasRole(requiredRole)) {
