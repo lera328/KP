@@ -2,6 +2,23 @@ import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import { AdminLayout } from './AdminLayout';
 import { useAuth } from '../context/AuthContext';
+import { IconPlus, IconRefresh, IconSearch } from './KidIcons';
+
+const ROLE_BADGE = {
+  admin: { bg: '#fef3c7', color: '#b45309' },
+  teacher: { bg: '#eff6ff', color: '#1d4ed8' },
+  parent: { bg: '#f5f3ff', color: '#6d28d9' },
+  student: { bg: '#ecfdf5', color: '#16a34a' },
+};
+
+const getInitials = (u) => {
+  const fn = (u?.first_name || '').trim();
+  const ln = (u?.last_name || '').trim();
+  if (fn || ln) {
+    return `${fn[0] || ''}${ln[0] || ''}`.toUpperCase() || '?';
+  }
+  return (u?.username || '?').slice(0, 2).toUpperCase();
+};
 
 const ROLE_OPTIONS = [
   { code: 'admin', label: 'Администратор' },
@@ -359,26 +376,38 @@ export const AdminUsers = () => {
   };
 
   return (
-    <AdminLayout title="Управление пользователями">
-      {error ? <div className="alert alert-danger">{error}</div> : null}
-      {success ? <div className="alert alert-success">{success}</div> : null}
+    <AdminLayout title="KiberOne — Пользователи">
+      {error ? <div className="alert alert-danger rounded-3">{error}</div> : null}
+      {success ? <div className="alert alert-success rounded-3">{success}</div> : null}
 
       {generatedPassword ? (
-        <div className="alert alert-warning d-flex align-items-start justify-content-between flex-wrap gap-2">
+        <div
+          className="rounded-4 p-3 mb-3 d-flex align-items-start justify-content-between flex-wrap gap-3"
+          style={{ background: '#fef3c7', border: '1px solid #fde68a' }}
+        >
           <div>
-            <div>
+            <div style={{ color: '#92400e' }}>
               <strong>Одноразовый пароль для {generatedPassword.username}:</strong>{' '}
-              <code style={{ fontSize: '1.05em' }}>{generatedPassword.password}</code>
+              <code
+                className="rounded-2 px-2 py-1"
+                style={{
+                  background: '#fff',
+                  color: '#92400e',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                }}
+              >
+                {generatedPassword.password}
+              </code>
             </div>
-            <div className="small text-muted">
+            <div className="small mt-1" style={{ color: '#92400e' }}>
               Передайте пароль пользователю. При входе он будет обязан задать новый.
-              Это сообщение исчезнет, когда вы его закроете.
             </div>
           </div>
           <div className="d-flex gap-2">
             <button
               type="button"
-              className="btn btn-sm btn-outline-secondary"
+              className="btn btn-sm btn-light border rounded-pill px-3"
               onClick={() => {
                 if (navigator?.clipboard?.writeText) {
                   navigator.clipboard.writeText(generatedPassword.password || '');
@@ -389,7 +418,7 @@ export const AdminUsers = () => {
             </button>
             <button
               type="button"
-              className="btn btn-sm btn-outline-dark"
+              className="btn btn-sm btn-dark rounded-pill px-3"
               onClick={() => setGeneratedPassword(null)}
             >
               Закрыть
@@ -398,190 +427,306 @@ export const AdminUsers = () => {
         </div>
       ) : null}
 
-      <div className="card mb-3">
-        <div className="card-body d-flex flex-wrap gap-2 justify-content-between align-items-center">
-          <div>
-            <h5 className="mb-1">Пользователи</h5>
-            <small className="text-muted">Управление учетными записями по категориям</small>
-          </div>
-          <div className="d-flex gap-2">
-            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={loadUsers} disabled={loadingUsers}>
-              Обновить
-            </button>
-            <button type="button" className="btn btn-primary btn-sm" onClick={openCreateModal}>
-              Создать пользователя
-            </button>
+      {/* Шапка */}
+      <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
+        <div className="flex-grow-1">
+          <h3 className="fw-semibold mb-0">Пользователи</h3>
+          <div className="text-muted small">
+            Управление учётными записями по категориям
           </div>
         </div>
-      </div>
-
-      <ul className="nav nav-pills mb-3">
-        {USER_CATEGORIES.map((category) => {
-          const count = (categorizedUsers[category.key] || []).length;
-          return (
-            <li className="nav-item me-2 mb-2" key={category.key}>
-              <button
-                type="button"
-                className={`btn btn-sm ${activeCategory === category.key ? 'btn-dark' : 'btn-outline-dark'}`}
-                onClick={() => setActiveCategory(category.key)}
-              >
-                {category.title} ({count})
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-
-      <div className="card mb-3">
-        <div className="card-body d-flex gap-2 align-items-center">
-          <input
-            type="text"
-            className="form-control form-control-sm"
-            placeholder="Поиск: логин, имя, email"
-            value={activeSearch}
-            onChange={(event) => handleCategorySearchChange(event.target.value)}
-          />
+        <div className="d-flex gap-2 flex-wrap">
           <button
             type="button"
-            className="btn btn-outline-secondary btn-sm"
-            onClick={() => handleCategorySearchChange('')}
-            disabled={!activeSearch}
+            className="btn btn-light border rounded-pill px-3 d-flex align-items-center gap-2"
+            onClick={loadUsers}
+            disabled={loadingUsers}
+            title="Обновить"
           >
-            Очистить
+            <IconRefresh width={16} height={16} />
+            <span className="d-none d-md-inline">Обновить</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-dark rounded-pill px-3 d-flex align-items-center gap-2"
+            onClick={openCreateModal}
+          >
+            <IconPlus width={16} height={16} />
+            Добавить пользователя
           </button>
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-body p-0">
-          {loadingUsers ? (
-            <div className="p-3">Загрузка...</div>
-          ) : visibleUsers.length === 0 ? (
-            <div className="p-3 text-muted">Пользователи не найдены.</div>
-          ) : (
-            <div className="table-responsive">
-              <table className="table table-striped table-hover mb-0">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Логин</th>
-                    <th>Имя</th>
-                    <th>Эл. почта</th>
-                    <th>Роли</th>
-                    <th className="text-end">Действия</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleUsers.map((row) => {
-                    const displayName = `${row.first_name || ''} ${row.last_name || ''}`.trim();
-                    const roles = Array.isArray(row.roles)
-                      ? row.roles.map((roleCode) => roleMap[roleCode] || roleCode).join(', ')
-                      : '-';
-                    const isCurrentUser = currentUser?.id === row.id;
-                    const isDeleting = deletingUserId === row.id;
-                    const isResetting = resettingUserId === row.id;
-
-                    return (
-                      <tr key={row.id} style={{ cursor: 'pointer' }} onClick={() => openViewUser(row)}>
-                        <td>{row.id}</td>
-                        <td>{row.username || '-'}</td>
-                        <td>{displayName || '-'}</td>
-                        <td>{row.email || '-'}</td>
-                        <td>{row.is_superuser ? 'Суперпользователь' : roles || '-'}</td>
-                        <td className="text-end">
-                          <div className="d-flex justify-content-end gap-2">
-                            <button
-                              type="button"
-                              className="btn btn-outline-primary btn-sm"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                openEditUser(row);
-                              }}
-                              disabled={isDeleting || isResetting}
-                            >
-                              Редактировать
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-outline-warning btn-sm"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleResetPassword(row);
-                              }}
-                              disabled={isCurrentUser || isDeleting || isResetting}
-                            >
-                              {isResetting ? 'Сброс…' : 'Сбросить пароль'}
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-outline-danger btn-sm"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleDeleteUser(row);
-                              }}
-                              disabled={isCurrentUser || isDeleting || isResetting}
-                            >
-                              {isDeleting ? 'Удаляем...' : 'Удалить'}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+      {/* Категории */}
+      <div className="d-flex flex-wrap gap-2 mb-3">
+        {USER_CATEGORIES.map((category) => {
+          const count = (categorizedUsers[category.key] || []).length;
+          const active = activeCategory === category.key;
+          return (
+            <button
+              key={category.key}
+              type="button"
+              className="btn btn-sm rounded-pill px-3 d-flex align-items-center gap-2"
+              style={{
+                background: active ? '#111827' : '#f8f9fb',
+                color: active ? '#fff' : '#374151',
+                border: `1px solid ${active ? '#111827' : '#e5e7eb'}`,
+                fontWeight: active ? 600 : 500,
+              }}
+              onClick={() => setActiveCategory(category.key)}
+            >
+              <span>{category.title}</span>
+              <span
+                className="badge rounded-pill"
+                style={{
+                  background: active ? 'rgba(255,255,255,0.2)' : '#e5e7eb',
+                  color: active ? '#fff' : '#374151',
+                  fontWeight: 600,
+                  fontSize: '0.72rem',
+                }}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
+
+      {/* Поиск */}
+      <div
+        className="d-flex align-items-center gap-2 rounded-3 mb-3 px-3"
+        style={{
+          background: '#ffffff',
+          border: '1px solid #e5e7eb',
+          height: 44,
+        }}
+      >
+        <IconSearch width={18} height={18} style={{ color: '#9ca3af' }} />
+        <input
+          type="text"
+          className="form-control border-0 shadow-none px-0"
+          placeholder="Поиск: логин, имя, email"
+          value={activeSearch}
+          onChange={(event) => handleCategorySearchChange(event.target.value)}
+          style={{ background: 'transparent' }}
+        />
+        {activeSearch && (
+          <button
+            type="button"
+            className="btn btn-sm btn-link text-muted text-decoration-none p-0"
+            onClick={() => handleCategorySearchChange('')}
+          >
+            Очистить
+          </button>
+        )}
+      </div>
+
+      {/* Список */}
+      {loadingUsers ? (
+        <div className="text-center py-5 text-muted">Загрузка…</div>
+      ) : visibleUsers.length === 0 ? (
+        <div
+          className="rounded-4 p-4 text-center text-muted"
+          style={{ background: '#f8f9fb' }}
+        >
+          Пользователи не найдены.
+        </div>
+      ) : (
+        <div className="d-flex flex-column gap-2">
+          {visibleUsers.map((row) => {
+            const displayName =
+              `${row.first_name || ''} ${row.last_name || ''}`.trim() ||
+              row.username ||
+              `ID ${row.id}`;
+            const roleCode = row.is_superuser
+              ? 'admin'
+              : Array.isArray(row.roles) && row.roles.length > 0
+              ? row.roles[0]
+              : '';
+            const roleLabel = row.is_superuser
+              ? 'Суперпользователь'
+              : roleMap[roleCode] || '—';
+            const roleBadge = ROLE_BADGE[roleCode] || {
+              bg: '#f3f4f6',
+              color: '#6b7280',
+            };
+            const isCurrentUser = currentUser?.id === row.id;
+            const isDeleting = deletingUserId === row.id;
+            const isResetting = resettingUserId === row.id;
+
+            return (
+              <div
+                key={row.id}
+                className="card border-0 shadow-sm rounded-4"
+                style={{ cursor: 'pointer' }}
+                onClick={() => openViewUser(row)}
+              >
+                <div className="card-body p-3 d-flex flex-wrap align-items-center gap-3">
+                  <div
+                    className="rounded-circle d-flex align-items-center justify-content-center fw-semibold flex-shrink-0"
+                    style={{
+                      width: 44,
+                      height: 44,
+                      background: roleBadge.bg,
+                      color: roleBadge.color,
+                      fontSize: '0.95rem',
+                    }}
+                  >
+                    {getInitials(row)}
+                  </div>
+                  <div className="flex-grow-1" style={{ minWidth: 200 }}>
+                    <div className="fw-semibold">{displayName}</div>
+                    <div className="text-muted small">
+                      {row.username ? `@${row.username}` : `ID ${row.id}`}
+                      {row.email ? ` · ${row.email}` : ''}
+                    </div>
+                  </div>
+                  <span
+                    className="badge rounded-pill"
+                    style={{
+                      background: roleBadge.bg,
+                      color: roleBadge.color,
+                      fontWeight: 500,
+                      fontSize: '0.78rem',
+                    }}
+                  >
+                    {roleLabel}
+                  </span>
+                  <div className="d-flex gap-1 flex-shrink-0">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-light border rounded-pill px-3"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openEditUser(row);
+                      }}
+                      disabled={isDeleting || isResetting}
+                    >
+                      Изменить
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-light border rounded-pill px-3"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleResetPassword(row);
+                      }}
+                      disabled={isCurrentUser || isDeleting || isResetting}
+                      title="Сбросить пароль"
+                    >
+                      {isResetting ? '…' : 'Пароль'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm rounded-pill px-3"
+                      style={{
+                        background: '#fef2f2',
+                        color: '#dc2626',
+                        border: '1px solid #fecaca',
+                      }}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleDeleteUser(row);
+                      }}
+                      disabled={isCurrentUser || isDeleting || isResetting}
+                    >
+                      {isDeleting ? '…' : 'Удалить'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {viewingUser ? (
         <>
           <div className="modal-backdrop show" onClick={closeViewUser} />
           <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true">
             <div className="modal-dialog modal-lg modal-dialog-centered">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Профиль пользователя #{viewingUser.id}</h5>
+              <div className="modal-content rounded-4 border-0 shadow-lg">
+                <div className="modal-header border-0">
+                  <h5 className="modal-title fw-semibold">Профиль пользователя</h5>
                   <button type="button" className="btn-close" onClick={closeViewUser} />
                 </div>
-                <div className="modal-body">
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <div><strong>Логин:</strong> {viewingUser.username || '-'}</div>
-                      <div><strong>Имя:</strong> {viewingUser.first_name || '-'}</div>
-                      <div><strong>Фамилия:</strong> {viewingUser.last_name || '-'}</div>
-                      <div><strong>Эл. почта:</strong> {viewingUser.email || '-'}</div>
-                    </div>
-                    <div className="col-md-6">
-                      <div><strong>Телефон:</strong> {viewingUser.phone || '-'}</div>
-                      <div><strong>Telegram ID:</strong> {viewingUser.telegram_chat_id || '-'}</div>
-                      <div>
-                        <strong>Роль:</strong>{' '}
-                        {viewingUser.is_superuser
-                          ? 'Суперпользователь'
-                          : (Array.isArray(viewingUser.roles) && viewingUser.roles.length > 0
-                            ? roleMap[viewingUser.roles[0]] || viewingUser.roles[0]
-                            : '-')}
-                      </div>
-                      <div><strong>is_superuser:</strong> {viewingUser.is_superuser ? 'Да' : 'Нет'}</div>
-                    </div>
+                <div className="modal-body pt-0">
+                  {/* Шапка профиля */}
+                  <div
+                    className="rounded-4 p-3 mb-3 d-flex align-items-center gap-3"
+                    style={{ background: '#f8f9fb' }}
+                  >
+                    {(() => {
+                      const roleCode = viewingUser.is_superuser
+                        ? 'admin'
+                        : Array.isArray(viewingUser.roles) && viewingUser.roles.length > 0
+                        ? viewingUser.roles[0]
+                        : '';
+                      const badge = ROLE_BADGE[roleCode] || {
+                        bg: '#f3f4f6',
+                        color: '#6b7280',
+                      };
+                      const roleLabel = viewingUser.is_superuser
+                        ? 'Суперпользователь'
+                        : roleMap[roleCode] || '—';
+                      return (
+                        <>
+                          <div
+                            className="rounded-circle d-flex align-items-center justify-content-center fw-semibold flex-shrink-0"
+                            style={{
+                              width: 56,
+                              height: 56,
+                              background: badge.bg,
+                              color: badge.color,
+                              fontSize: '1.1rem',
+                            }}
+                          >
+                            {getInitials(viewingUser)}
+                          </div>
+                          <div className="flex-grow-1">
+                            <div className="fw-semibold" style={{ fontSize: '1.05rem' }}>
+                              {`${viewingUser.first_name || ''} ${viewingUser.last_name || ''}`.trim() ||
+                                viewingUser.username ||
+                                `ID ${viewingUser.id}`}
+                            </div>
+                            <div className="text-muted small">
+                              {viewingUser.username ? `@${viewingUser.username}` : `ID ${viewingUser.id}`}
+                            </div>
+                          </div>
+                          <span
+                            className="badge rounded-pill"
+                            style={{
+                              background: badge.bg,
+                              color: badge.color,
+                              fontWeight: 500,
+                              fontSize: '0.85rem',
+                            }}
+                          >
+                            {roleLabel}
+                          </span>
+                        </>
+                      );
+                    })()}
                   </div>
 
-                  {(Array.isArray(viewingUser.roles) && viewingUser.roles[0] === 'student') || viewingUserGroups.length > 0 ? (
-                    <>
-                      <hr />
-                      <div>
-                        <strong>Группа ученика:</strong>{' '}
-                        {viewingUserGroups.length > 0
+                  <div className="row g-2">
+                    <InfoField label="Эл. почта" value={viewingUser.email} />
+                    <InfoField label="Телефон" value={viewingUser.phone} />
+                    <InfoField label="Telegram ID" value={viewingUser.telegram_chat_id} />
+                    <InfoField
+                      label="Группа ученика"
+                      value={
+                        viewingUserGroups.length > 0
                           ? viewingUserGroups.map((group) => group.name).join(', ')
-                          : 'Не назначена'}
-                      </div>
-                    </>
-                  ) : null}
+                          : (Array.isArray(viewingUser.roles) && viewingUser.roles[0] === 'student'
+                              ? 'Не назначена'
+                              : null)
+                      }
+                    />
+                  </div>
                 </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={closeViewUser}>
+                <div className="modal-footer border-0">
+                  <button type="button" className="btn btn-light border rounded-pill px-4" onClick={closeViewUser}>
                     Закрыть
                   </button>
                 </div>
@@ -596,9 +741,9 @@ export const AdminUsers = () => {
           <div className="modal-backdrop show" onClick={closeCreateModal} />
           <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true">
             <div className="modal-dialog modal-lg modal-dialog-centered">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Создать пользователя</h5>
+              <div className="modal-content rounded-4 border-0 shadow-lg">
+                <div className="modal-header border-0">
+                  <h5 className="modal-title fw-semibold">Создать пользователя</h5>
                   <button type="button" className="btn-close" onClick={closeCreateModal} disabled={savingCreate} />
                 </div>
                 <form onSubmit={handleCreateSubmit}>
@@ -736,12 +881,12 @@ export const AdminUsers = () => {
                       </div>
                     ) : null}
                   </div>
-                  <div className="modal-footer">
-                    <button type="button" className="btn btn-outline-secondary" onClick={closeCreateModal} disabled={savingCreate}>
+                  <div className="modal-footer border-0">
+                    <button type="button" className="btn btn-light border rounded-pill px-4" onClick={closeCreateModal} disabled={savingCreate}>
                       Отмена
                     </button>
-                    <button type="submit" className="btn btn-primary" disabled={savingCreate}>
-                      {savingCreate ? 'Сохраняем...' : 'Создать'}
+                    <button type="submit" className="btn btn-dark rounded-pill px-4" disabled={savingCreate}>
+                      {savingCreate ? 'Сохраняем…' : 'Создать'}
                     </button>
                   </div>
                 </form>
@@ -756,9 +901,9 @@ export const AdminUsers = () => {
           <div className="modal-backdrop show" onClick={closeEditUser} />
           <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true">
             <div className="modal-dialog modal-lg modal-dialog-centered">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Редактировать пользователя #{editingUser.id}</h5>
+              <div className="modal-content rounded-4 border-0 shadow-lg">
+                <div className="modal-header border-0">
+                  <h5 className="modal-title fw-semibold">Редактировать пользователя</h5>
                   <button type="button" className="btn-close" onClick={closeEditUser} disabled={savingEdit} />
                 </div>
                 <form onSubmit={handleEditSubmit}>
@@ -901,12 +1046,12 @@ export const AdminUsers = () => {
                       </div>
                     ) : null}
                   </div>
-                  <div className="modal-footer">
-                    <button type="button" className="btn btn-outline-secondary" onClick={closeEditUser} disabled={savingEdit}>
+                  <div className="modal-footer border-0">
+                    <button type="button" className="btn btn-light border rounded-pill px-4" onClick={closeEditUser} disabled={savingEdit}>
                       Отмена
                     </button>
-                    <button type="submit" className="btn btn-primary" disabled={savingEdit}>
-                      {savingEdit ? 'Сохраняем...' : 'Сохранить'}
+                    <button type="submit" className="btn btn-dark rounded-pill px-4" disabled={savingEdit}>
+                      {savingEdit ? 'Сохраняем…' : 'Сохранить'}
                     </button>
                   </div>
                 </form>
@@ -916,5 +1061,27 @@ export const AdminUsers = () => {
         </>
       ) : null}
     </AdminLayout>
+  );
+};
+
+const InfoField = ({ label, value }) => {
+  if (!value) return null;
+  return (
+    <div className="col-md-6">
+      <div
+        className="rounded-3 p-2 px-3"
+        style={{ background: '#f8f9fb' }}
+      >
+        <div
+          className="text-muted small text-uppercase"
+          style={{ letterSpacing: 0.4, fontSize: '0.7rem' }}
+        >
+          {label}
+        </div>
+        <div className="fw-semibold" style={{ fontSize: '0.92rem' }}>
+          {value}
+        </div>
+      </div>
+    </div>
   );
 };

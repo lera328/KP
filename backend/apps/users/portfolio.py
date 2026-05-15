@@ -56,12 +56,46 @@ def _project_image_paths(project: StudentProject) -> list:
     return paths
 
 
+def _absolute_media_url(url: str) -> str:
+    if not url:
+        return ""
+    if url.startswith("http://") or url.startswith("https://"):
+        return url
+    base = getattr(settings, "PUBLIC_FRONTEND_URL", "").rstrip("/")
+    if not base:
+        return url
+    if not url.startswith("/"):
+        url = "/" + url
+    return f"{base}{url}"
+
+
+def _project_image_urls(project: StudentProject, request: HttpRequest = None) -> list:
+    urls = []
+    for image in project.images.all():
+        if not image.image:
+            continue
+        url = _absolute_media_url(image.image.url)
+        urls.append({"id": image.id, "url": url})
+    return urls
+
+
+def _project_file_entries(project: StudentProject, request: HttpRequest = None) -> list:
+    entries = []
+    for item in project.files.all():
+        if not item.file:
+            continue
+        url = _absolute_media_url(item.file.url)
+        name = item.original_name or item.file.name.rsplit("/", 1)[-1]
+        entries.append({"id": item.id, "url": url, "name": name, "size": item.size})
+    return entries
+
+
 def build_portfolio_context(student: User, request: HttpRequest = None) -> dict:
     profile = _ensure_student_profile(student)
 
     projects_qs = (
         StudentProject.objects.filter(student=student)
-        .prefetch_related("images")
+        .prefetch_related("images", "files")
         .order_by("-created_at")
     )
 
@@ -79,6 +113,8 @@ def build_portfolio_context(student: User, request: HttpRequest = None) -> dict:
                 "created_at": project.created_at,
                 "likes_count": likes_count,
                 "image_paths": _project_image_paths(project),
+                "image_urls": _project_image_urls(project, request=request),
+                "files": _project_file_entries(project, request=request),
             }
         )
 
@@ -89,10 +125,49 @@ def build_portfolio_context(student: User, request: HttpRequest = None) -> dict:
     )
     groups_data = [{"name": name, "course_title": course or "—"} for name, course in groups]
 
-    lessons_attended = AttendanceRecord.objects.filter(
-        student=student,
-        status__in=[AttendanceRecord.Status.PRESENT, AttendanceRecord.Status.MAKEUP],
-    ).count()
+    attended_qs = (
+        AttendanceRecord.objects.filter(
+            student=student,
+            status__in=[
+                AttendanceRecord.Status.PRESENT,
+                AttendanceRecord.Status.MAKEUP,
+            ],
+        )
+        .select_related("lesson", "lesson__topic", "lesson__group")
+        .order_by("-lesson__starts_at")
+    )
+
+    lessons_data = []
+    grades_collected = []
+    for record in attended_qs:
+        lesson = record.lesson
+        topic_title = (lesson.conducted_topic or "").strip()
+        if not topic_title and lesson.topic_id:
+            topic_title = lesson.topic.title
+        lessons_data.append(
+            {
+                "lesson_id": lesson.id,
+                "starts_at": lesson.starts_at,
+                "group_name": lesson.group.name if lesson.group_id else "",
+                "topic": topic_title or "—",
+                "status": record.status,
+                "grade": record.grade,
+                "teacher_comment": (record.teacher_comment or "").strip(),
+                "is_makeup": bool(lesson.is_makeup_slot)
+                or record.status == AttendanceRecord.Status.MAKEUP,
+            }
+        )
+        if record.grade is not None:
+            grades_collected.append(record.grade)
+
+    grades_summary = {
+        "count": len(grades_collected),
+        "average": round(sum(grades_collected) / len(grades_collected), 2)
+        if grades_collected
+        else None,
+        "max": max(grades_collected) if grades_collected else None,
+        "min": min(grades_collected) if grades_collected else None,
+    }
 
     public_url = _public_portfolio_url(request, str(profile.portfolio_token))
     qr_data_uri = _build_qr_data_uri(public_url)
@@ -106,11 +181,14 @@ def build_portfolio_context(student: User, request: HttpRequest = None) -> dict:
         "public_url": public_url,
         "stats": {
             "projects_total": len(projects),
-            "lessons_attended": lessons_attended,
+            "lessons_attended": len(lessons_data),
             "likes_total": likes_total,
+            "grades_average": grades_summary["average"],
         },
         "groups": groups_data,
         "projects": projects,
+        "lessons": lessons_data,
+        "grades_summary": grades_summary,
     }
 
 

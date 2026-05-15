@@ -89,6 +89,17 @@ class StudentProjectImage(models.Model):
         return f"ProjectImage #{self.id} ({self.project_id})"
 
 
+class StudentProjectFile(models.Model):
+    project = models.ForeignKey(StudentProject, on_delete=models.CASCADE, related_name="files")
+    file = models.FileField(upload_to="projects/files/%Y/%m/")
+    original_name = models.CharField(max_length=255, blank=True)
+    size = models.PositiveBigIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"ProjectFile #{self.id} ({self.project_id})"
+
+
 class StudentProjectLike(models.Model):
     project = models.ForeignKey(StudentProject, on_delete=models.CASCADE, related_name="likes")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="project_likes")

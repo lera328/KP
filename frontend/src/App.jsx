@@ -7,17 +7,23 @@ import { ResetPassword } from './components/ResetPassword';
 import { ForceChangePassword } from './components/ForceChangePassword';
 import { Dashboard } from './components/Dashboard';
 import { AdminUsers } from './components/AdminUsers';
-import { TeacherAttendance } from './components/TeacherAttendance';
-import { TeacherGroups } from './components/TeacherGroups';
 import { StudentGroups } from './components/StudentGroups';
+import { TeacherHome } from './components/TeacherHome';
+import { TeacherSchedule } from './components/TeacherSchedule';
 import { TeacherMakeupSlots } from './components/TeacherMakeupSlots';
 import { TeacherSalary } from './components/TeacherSalary';
+import { TeacherGroupDetail } from './components/TeacherGroupDetail';
+import { TeacherStudentDetail } from './components/TeacherStudentDetail';
 import { ParentChildren } from './components/ParentChildren';
 import { ParentAttendance } from './components/ParentAttendance';
 import { ParentBilling } from './components/ParentBilling';
 import { ProjectsFeed } from './components/ProjectsFeed';
 import { StudentAttendance } from './components/StudentAttendance';
 import { StudentProjects } from './components/StudentProjects';
+import { StudentHome } from './components/StudentHome';
+import { StudentSchedulePage } from './components/StudentSchedulePage';
+import { StudentProjectsHub } from './components/StudentProjectsHub';
+import { Portfolio } from './components/Portfolio';
 import { StudentBalance } from './components/StudentBalance';
 import { AdminFinance } from './components/AdminFinance';
 import { AdminGroups } from './components/AdminGroups';
@@ -25,6 +31,10 @@ import { AdminNotifications } from './components/AdminNotifications';
 import { AdminMakeups } from './components/AdminMakeups';
 import AdminChurnRisk from './components/AdminChurnRisk';
 import AdminAnalytics from './components/AdminAnalytics';
+import { AdminScheduleOverview } from './components/AdminScheduleOverview';
+import { AdminTeacherDetail } from './components/AdminTeacherDetail';
+import { AdminGroupDetail } from './components/AdminGroupDetail';
+import { AdminStudentDetail } from './components/AdminStudentDetail';
 import MakeupConfirm from './components/MakeupConfirm';
 
 /**
@@ -145,6 +155,10 @@ function AdminRoutes() {
       <Route path="/" element={<AdminDashboard />} />
       <Route path="users" element={<AdminUsers />} />
       <Route path="groups" element={<AdminGroups />} />
+      <Route path="groups/:id" element={<AdminGroupDetail />} />
+      <Route path="schedule" element={<AdminScheduleOverview />} />
+      <Route path="teachers/:id" element={<AdminTeacherDetail />} />
+      <Route path="students/:id" element={<AdminStudentDetail />} />
       <Route path="finance" element={<AdminFinance />} />
       <Route path="makeups" element={<AdminMakeups />} />
       <Route path="notifications" element={<AdminNotifications />} />
@@ -160,11 +174,15 @@ function AdminRoutes() {
 function TeacherRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<TeacherDashboard />} />
-      <Route path="groups" element={<TeacherGroups />} />
-      <Route path="attendance" element={<TeacherAttendance />} />
+      <Route path="/" element={<TeacherHome />} />
+      <Route path="schedule" element={<TeacherSchedule />} />
       <Route path="makeup-slots" element={<TeacherMakeupSlots />} />
       <Route path="salary" element={<TeacherSalary />} />
+      <Route path="groups/:id" element={<TeacherGroupDetail />} />
+      <Route path="students/:id" element={<TeacherStudentDetail />} />
+      {/* Backwards compatibility — старые ссылки */}
+      <Route path="groups" element={<Navigate to="/teacher" replace />} />
+      <Route path="attendance" element={<Navigate to="/teacher/schedule" replace />} />
     </Routes>
   );
 }
@@ -177,6 +195,7 @@ function ParentRoutes() {
     <Routes>
       <Route path="/" element={<ParentDashboard />} />
       <Route path="children" element={<ParentChildrenPage />} />
+      <Route path="children/:studentId/portfolio" element={<Portfolio mode="parent" />} />
       <Route path="attendance" element={<ParentAttendancePage />} />
       <Route path="billing" element={<ParentBillingPage />} />
     </Routes>
@@ -189,11 +208,15 @@ function ParentRoutes() {
 function StudentRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<StudentDashboard />} />
+      <Route path="/" element={<StudentHome />} />
+      <Route path="schedule" element={<StudentSchedulePage />} />
+      <Route path="projects" element={<StudentProjectsHub />} />
+      <Route path="portfolio" element={<Portfolio mode="student" />} />
+      {/* Legacy routes — оставлены для прямых ссылок */}
       <Route path="groups" element={<StudentGroups />} />
-      <Route path="attendance" element={<StudentAttendancePage />} />
-      <Route path="projects" element={<StudentProjectsPage />} />
+      <Route path="attendance" element={<Navigate to="/student/schedule" replace />} />
       <Route path="balance" element={<StudentBalancePage />} />
+      <Route path="projects/old" element={<StudentProjectsPage />} />
     </Routes>
   );
 }

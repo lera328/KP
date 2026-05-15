@@ -2,8 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import { AdminLayout } from './AdminLayout';
 import { AdminGroupModal } from './AdminGroupModal';
+import { IconPlus, IconRefresh, IconSearch, IconUsers, IconCalendar } from './KidIcons';
 
 const WEEKDAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+const STATUS_PILLS = [
+  { value: 'all', label: 'Все' },
+  { value: 'active', label: 'Активные' },
+  { value: 'inactive', label: 'Архив' },
+];
 
 const SearchableMultiSelect = ({
   label,
@@ -88,11 +95,15 @@ export const AdminGroups = () => {
   const [success, setSuccess] = useState('');
 
   const [selectedGroup, setSelectedGroup] = useState(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const [filters, setFilters] = useState({
     query: '',
     status: 'all',
+    location: '',
   });
+
+  const locationMap = useMemo(() => new Map(locations.map((l) => [l.id, l])), [locations]);
 
   const [groupForm, setGroupForm] = useState({
     name: '',
@@ -180,7 +191,9 @@ export const AdminGroups = () => {
             ? group.is_active
             : !group.is_active;
 
-      return matchQuery && matchStatus;
+      const matchLocation = !filters.location || Number(group.location) === Number(filters.location);
+
+      return matchQuery && matchStatus && matchLocation;
     });
   }, [groups, filters]);
 
@@ -231,6 +244,7 @@ export const AdminGroups = () => {
         teacher_ids: [],
         student_ids: [],
       }));
+      setCreateOpen(false);
       await loadData();
     } catch (saveError) {
       setError(saveError.message || 'Не удалось создать группу.');
@@ -240,165 +254,272 @@ export const AdminGroups = () => {
   };
 
   const resetFilters = () => {
-    setFilters({ query: '', status: 'all' });
+    setFilters({ query: '', status: 'all', location: '' });
   };
 
   return (
-    <AdminLayout title="Админ — Группы">
-      {error ? <div className="alert alert-danger">{error}</div> : null}
-      {success ? <div className="alert alert-success">{success}</div> : null}
+    <AdminLayout title="KiberOne — Группы">
+      {error ? <div className="alert alert-danger rounded-3">{error}</div> : null}
+      {success ? <div className="alert alert-success rounded-3">{success}</div> : null}
 
-      <div className="row g-4">
-        <div className="col-lg-4">
-          <div className="card">
-            <div className="card-header">
-              <strong>Создать группу</strong>
-            </div>
-            <div className="card-body">
-              <form onSubmit={handleCreateGroup}>
-                <div className="mb-3">
-                  <label className="form-label">Название группы</label>
-                  <input
-                    className="form-control"
-                    value={groupForm.name}
-                    onChange={(event) => setGroupForm((prev) => ({ ...prev, name: event.target.value }))}
-                    disabled={loading || savingGroup}
-                  />
-                </div>
+      {/* Header */}
+      <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
+        <div className="flex-grow-1">
+          <div className="text-muted small">Управление учебными группами</div>
+          <h3 className="fw-semibold mb-0">Группы</h3>
+        </div>
+        <button
+          type="button"
+          className="btn btn-light border rounded-pill px-3 d-flex align-items-center gap-2"
+          onClick={loadData}
+          disabled={loading}
+        >
+          <IconRefresh width={16} height={16} />
+          Обновить
+        </button>
+        <button
+          type="button"
+          className="btn btn-dark rounded-pill px-3 d-flex align-items-center gap-2"
+          onClick={() => setCreateOpen(true)}
+          disabled={loading}
+        >
+          <IconPlus width={16} height={16} />
+          Создать группу
+        </button>
+      </div>
 
-                <div className="mb-3">
-                  <label className="form-label">Локация *</label>
-                  <select
-                    className="form-select"
-                    value={groupForm.location}
-                    onChange={(event) => setGroupForm((prev) => ({ ...prev, location: event.target.value }))}
-                    disabled={loading || savingGroup}
-                  >
-                    <option value="">— выберите локацию —</option>
-                    {locations.map((loc) => (
-                      <option key={loc.id} value={loc.id}>{loc.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <SearchableMultiSelect
-                  label="Преподаватели"
-                  items={teachers}
-                  selectedIds={groupForm.teacher_ids}
-                  onToggle={(id) => toggleSelection('teacher_ids', id)}
-                  loading={loading || savingGroup}
-                  placeholder="Выберите преподавателей"
-                  emptyText="Преподаватели не найдены"
-                  renderLabel={userLabel}
-                />
-
-                <SearchableMultiSelect
-                  label="Ученики"
-                  items={students}
-                  selectedIds={groupForm.student_ids}
-                  onToggle={(id) => toggleSelection('student_ids', id)}
-                  loading={loading || savingGroup}
-                  placeholder="Выберите учеников"
-                  emptyText="Ученики не найдены"
-                  renderLabel={userLabel}
-                />
-
-                <div className="form-check mb-3">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    checked={groupForm.is_active}
-                    onChange={(event) => setGroupForm((prev) => ({ ...prev, is_active: event.target.checked }))}
-                    disabled={loading || savingGroup}
-                    id="group-active"
-                  />
-                  <label className="form-check-label" htmlFor="group-active">
-                    Активная группа
-                  </label>
-                </div>
-
-                <button type="submit" className="btn btn-primary" disabled={loading || savingGroup}>
-                  {savingGroup ? 'Сохраняем...' : 'Создать группу'}
+      {/* Search + status pills */}
+      <div className="card border-0 shadow-sm rounded-4 mb-3">
+        <div className="card-body p-3 d-flex flex-wrap align-items-center gap-2">
+          <div className="position-relative flex-grow-1" style={{ minWidth: 220 }}>
+            <span
+              className="position-absolute text-muted"
+              style={{ left: 12, top: '50%', transform: 'translateY(-50%)' }}
+            >
+              <IconSearch width={16} height={16} />
+            </span>
+            <input
+              className="form-control rounded-pill ps-5"
+              placeholder="Поиск по названию группы"
+              value={filters.query}
+              onChange={(event) => setFilters((prev) => ({ ...prev, query: event.target.value }))}
+              disabled={loading}
+            />
+          </div>
+          <select
+            className="form-select form-select-sm rounded-pill"
+            value={filters.location}
+            onChange={(e) => setFilters((prev) => ({ ...prev, location: e.target.value }))}
+            disabled={loading}
+            style={{ minWidth: 140, maxWidth: 180 }}
+          >
+            <option value="">Все локации</option>
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.id}>{loc.name}</option>
+            ))}
+          </select>
+          <div className="d-flex gap-2 flex-wrap">
+            {STATUS_PILLS.map((pill) => {
+              const active = filters.status === pill.value;
+              return (
+                <button
+                  type="button"
+                  key={pill.value}
+                  className="btn btn-sm rounded-pill px-3"
+                  style={{
+                    background: active ? '#111827' : '#f1f3f5',
+                    color: active ? '#fff' : '#374151',
+                    border: 'none',
+                  }}
+                  onClick={() => setFilters((prev) => ({ ...prev, status: pill.value }))}
+                  disabled={loading}
+                >
+                  {pill.label}
                 </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Group list */}
+      {loading ? (
+        <div className="text-muted py-4 text-center">Загрузка...</div>
+      ) : filteredGroups.length === 0 ? (
+        <div className="card border-0 shadow-sm rounded-4">
+          <div className="card-body p-4 text-center text-muted">Группы не найдены.</div>
+        </div>
+      ) : (
+        <div className="row g-3">
+          {filteredGroups.map((group) => {
+            const teachersCount = Array.isArray(group.teachers) ? group.teachers.length : 0;
+            const studentsCount = Array.isArray(group.students) ? group.students.length : 0;
+            const slot = renderGroupSlot(group);
+            return (
+              <div className="col-md-6 col-xl-4" key={group.id}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="card border-0 shadow-sm rounded-4 h-100"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setSelectedGroup(group)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedGroup(group);
+                    }
+                  }}
+                >
+                  <div className="card-body p-3">
+                    <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
+                      <div className="flex-grow-1">
+                        <div className="fw-semibold" style={{ fontSize: 16 }}>{group.name}</div>
+                        <div className="text-muted small">
+                          {group.location_name || <span className="text-danger">локация не задана</span>}
+                        </div>
+                      </div>
+                      <span
+                        className="badge rounded-pill"
+                        style={{
+                          background: group.is_active ? '#ecfdf5' : '#f1f3f5',
+                          color: group.is_active ? '#16a34a' : '#6b7280',
+                          fontWeight: 500,
+                        }}
+                      >
+                        {group.is_active ? 'Активна' : 'Архив'}
+                      </span>
+                    </div>
+                    <div className="d-flex flex-wrap gap-2 mt-3">
+                      <span
+                        className="badge rounded-pill d-flex align-items-center gap-1"
+                        style={{ background: '#eff6ff', color: '#1d4ed8', fontWeight: 500 }}
+                      >
+                        <IconUsers width={12} height={12} />
+                        {studentsCount} учеников
+                      </span>
+                      <span
+                        className="badge rounded-pill"
+                        style={{ background: '#f5f3ff', color: '#6d28d9', fontWeight: 500 }}
+                      >
+                        {teachersCount} преп.
+                      </span>
+                      {slot && slot !== '-' ? (
+                        <span
+                          className="badge rounded-pill d-flex align-items-center gap-1"
+                          style={{ background: '#f8f9fb', color: '#374151', fontWeight: 500 }}
+                        >
+                          <IconCalendar width={12} height={12} />
+                          {slot}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Create modal */}
+      {createOpen ? (
+        <div
+          className="modal fade show d-block"
+          tabIndex={-1}
+          style={{ background: 'rgba(17,24,39,0.5)' }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setCreateOpen(false);
+          }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 rounded-4 shadow">
+              <div className="modal-header border-0 px-4 pt-4 pb-2">
+                <h5 className="modal-title fw-semibold">Создать группу</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setCreateOpen(false)}
+                  disabled={savingGroup}
+                />
+              </div>
+              <form onSubmit={handleCreateGroup}>
+                <div className="modal-body px-4 pb-2">
+                  <div className="mb-3">
+                    <label className="form-label">Название группы</label>
+                    <input
+                      className="form-control rounded-3"
+                      value={groupForm.name}
+                      onChange={(event) => setGroupForm((prev) => ({ ...prev, name: event.target.value }))}
+                      disabled={savingGroup}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Локация *</label>
+                    <select
+                      className="form-select rounded-3"
+                      value={groupForm.location}
+                      onChange={(event) => setGroupForm((prev) => ({ ...prev, location: event.target.value }))}
+                      disabled={savingGroup}
+                    >
+                      <option value="">— выберите локацию —</option>
+                      {locations.map((loc) => (
+                        <option key={loc.id} value={loc.id}>{loc.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <SearchableMultiSelect
+                    label="Преподаватели"
+                    items={teachers}
+                    selectedIds={groupForm.teacher_ids}
+                    onToggle={(id) => toggleSelection('teacher_ids', id)}
+                    loading={savingGroup}
+                    placeholder="Выберите преподавателей"
+                    emptyText="Преподаватели не найдены"
+                    renderLabel={userLabel}
+                  />
+                  <SearchableMultiSelect
+                    label="Ученики"
+                    items={students}
+                    selectedIds={groupForm.student_ids}
+                    onToggle={(id) => toggleSelection('student_ids', id)}
+                    loading={savingGroup}
+                    placeholder="Выберите учеников"
+                    emptyText="Ученики не найдены"
+                    renderLabel={userLabel}
+                  />
+                  <div className="form-check mb-1">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      checked={groupForm.is_active}
+                      onChange={(event) => setGroupForm((prev) => ({ ...prev, is_active: event.target.checked }))}
+                      disabled={savingGroup}
+                      id="group-active"
+                    />
+                    <label className="form-check-label" htmlFor="group-active">
+                      Активная группа
+                    </label>
+                  </div>
+                </div>
+                <div className="modal-footer border-0 px-4 pb-4 pt-2">
+                  <button
+                    type="button"
+                    className="btn btn-light border rounded-pill px-3"
+                    onClick={() => setCreateOpen(false)}
+                    disabled={savingGroup}
+                  >
+                    Отмена
+                  </button>
+                  <button type="submit" className="btn btn-dark rounded-pill px-4" disabled={savingGroup}>
+                    {savingGroup ? 'Сохраняем...' : 'Создать'}
+                  </button>
+                </div>
               </form>
             </div>
           </div>
         </div>
-
-        <div className="col-lg-8">
-          <div className="card mb-3">
-            <div className="card-body d-flex flex-wrap gap-2 align-items-center">
-              <input
-                className="form-control form-control-sm"
-                style={{ maxWidth: '280px' }}
-                placeholder="Поиск по названию группы"
-                value={filters.query}
-                onChange={(event) => setFilters((prev) => ({ ...prev, query: event.target.value }))}
-                disabled={loading}
-              />
-              <select
-                className="form-select form-select-sm"
-                style={{ maxWidth: '180px' }}
-                value={filters.status}
-                onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))}
-                disabled={loading}
-              >
-                <option value="all">Все статусы</option>
-                <option value="active">Активные</option>
-                <option value="inactive">Неактивные</option>
-              </select>
-              <button className="btn btn-outline-secondary btn-sm" onClick={resetFilters} disabled={loading}>
-                Сбросить
-              </button>
-              <button className="btn btn-outline-secondary btn-sm ms-auto" onClick={loadData} disabled={loading}>
-                Обновить
-              </button>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="card-header">
-              <strong>Группы</strong>
-            </div>
-            <div className="card-body p-0">
-              {loading ? (
-                <div className="p-3">Загрузка...</div>
-              ) : filteredGroups.length === 0 ? (
-                <div className="p-3 text-muted">Группы не найдены.</div>
-              ) : (
-                <div className="table-responsive">
-                  <table className="table table-striped table-hover mb-0">
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Группа</th>
-                        <th>Локация</th>
-                        <th>Преподавателей</th>
-                        <th>Учеников</th>
-                        <th>Слот</th>
-                        <th>Статус</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredGroups.map((group) => (
-                        <tr key={group.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedGroup(group)}>
-                          <td>{group.id}</td>
-                          <td>{group.name}</td>
-                          <td>{group.location_name || <span className="text-danger">не задана</span>}</td>
-                          <td>{Array.isArray(group.teachers) ? group.teachers.length : 0}</td>
-                          <td>{Array.isArray(group.students) ? group.students.length : 0}</td>
-                          <td>{renderGroupSlot(group)}</td>
-                          <td>{group.is_active ? 'Активна' : 'Неактивна'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      ) : null}
 
       {selectedGroup ? (
         <AdminGroupModal

@@ -64,6 +64,8 @@ def _student_payload(student: User) -> dict:
     )
     has_active_subscription = bool(subscription)
     remaining_lessons = subscription.remaining_lessons if subscription else 0
+    valid_until = subscription.valid_until if subscription else None
+    is_period_based = subscription and subscription.valid_from is not None
 
     group = last_record.lesson.group.name if last_record else ""
 
@@ -84,6 +86,15 @@ def _student_payload(student: User) -> dict:
         else:
             risk_score = max(risk_score, 1)
             reasons.append("Не оплачены занятия")
+    elif is_period_based:
+        from datetime import date
+        days_left = (valid_until - date.today()).days if valid_until else 0
+        if days_left <= 0:
+            risk_score = max(risk_score, 1)
+            reasons.append("Абонемент истёк")
+        elif days_left <= 7:
+            risk_score = max(risk_score, 1)
+            reasons.append(f"Абонемент истекает через {days_left} дн.")
     elif remaining_lessons == 0:
         risk_score = max(risk_score, 1)
         reasons.append("Закончились оплаченные занятия")
@@ -113,6 +124,7 @@ def _student_payload(student: User) -> dict:
         "lessons_in_window": window_total,
         "absences_in_window": window_absent,
         "remaining_lessons": remaining_lessons,
+        "valid_until": str(valid_until) if valid_until else None,
         "has_active_subscription": has_active_subscription,
         "last_lesson_at": last_lesson_at,
         "risk_level": risk_level,

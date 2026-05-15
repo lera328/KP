@@ -349,6 +349,38 @@ def approve_makeup_view(request, request_id):
     return Response({"id": request_obj.id, "status": request_obj.status})
 
 
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated, IsAdminRole])
+def reject_makeup_view(request, request_id):
+    """Отменить/отклонить заявку на отработку. Удаляет MakeUpRequest,
+    чтобы родитель мог повторно выбрать слот."""
+    try:
+        request_obj = MakeUpRequest.objects.get(id=request_id)
+    except MakeUpRequest.DoesNotExist:
+        return Response({"detail": "Заявка не найдена."}, status=status.HTTP_404_NOT_FOUND)
+
+    if request_obj.status == MakeUpRequest.Status.APPROVED:
+        return Response(
+            {"detail": "Нельзя отменить уже подтверждённую отработку."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    request_obj.delete()
+    return Response({"detail": "Заявка отменена."}, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated, IsAdminRole])
+def admin_assign_makeup_view(request):
+    """Админ назначает отработку ребёнку напрямую: absence_record_id + makeup_lesson_id."""
+    serializer = MakeUpRequestCreateSerializer(
+        data=request.data, context={"skip_recency_check": True}
+    )
+    serializer.is_valid(raise_exception=True)
+    request_obj = serializer.save()
+    return Response({"id": request_obj.id, "status": request_obj.status}, status=status.HTTP_201_CREATED)
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def conduct_lesson_view(request, lesson_id):
@@ -379,9 +411,9 @@ def teacher_makeup_slots_view(request):
         raise PermissionDenied("Только преподаватель или администратор")
 
     if request.method == "GET":
+        # Возвращаем слоты всех преподавателей за период, чтобы учитель видел,
+        # какие часы уже заняты коллегами. Флаг is_mine различает свои/чужие.
         qs = Lesson.objects.filter(is_makeup_slot=True)
-        if not is_admin:
-            qs = qs.filter(teacher=user)
         date_from = request.query_params.get("from")
         date_to = request.query_params.get("to")
         if date_from:
@@ -395,13 +427,19 @@ def teacher_makeup_slots_view(request):
                 makeup_lesson=lesson,
                 status__in=[MakeUpRequest.Status.REQUESTED, MakeUpRequest.Status.COMPLETED, MakeUpRequest.Status.APPROVED],
             ).count()
+            teacher_name = (
+                lesson.teacher.get_full_name().strip() or lesson.teacher.username
+                if lesson.teacher
+                else ""
+            )
             data.append({
                 "id": lesson.id,
                 "starts_at": lesson.starts_at,
                 "location_id": lesson.location_id,
                 "location_name": lesson.location.name if lesson.location else None,
                 "teacher_id": lesson.teacher_id,
-                "teacher_name": lesson.teacher.get_full_name().strip() or lesson.teacher.username,
+                "teacher_name": teacher_name,
+                "is_mine": lesson.teacher_id == user.id,
                 "capacity": lesson.makeup_capacity,
                 "booked": booked,
             })
@@ -646,8 +684,9 @@ def my_attendance_view(request):
             "teacher_comment": record.teacher_comment,
             "homework": record.lesson.homework,
             "lesson_starts_at": record.lesson.starts_at,
-            "lesson_topic": record.lesson.conducted_topic or record.lesson.topic.title,
-            "group_name": record.lesson.group.name,
+            "lesson_topic": record.lesson.conducted_topic or (record.lesson.topic.title if record.lesson.topic else ""),
+            "lesson_description": record.lesson.conducted_description,
+            "group_name": record.lesson.group.name if record.lesson.group else "",
             "lesson_id": record.lesson_id,
         }
         for record in records
@@ -659,21 +698,59 @@ def my_attendance_view(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def teacher_salary_view(request):
+    is_admin = request.user.roles.filter(code=Role.Code.ADMIN).exists() or request.user.is_superuser
     is_teacher = request.user.roles.filter(code=Role.Code.TEACHER).exists()
-    if not is_teacher:
-        raise PermissionDenied("Раздел доступен только преподавателям")
+
+    teacher_id = request.query_params.get("teacher_id")
+    if teacher_id and is_admin:
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            target_teacher = User.objects.get(id=teacher_id)
+        except User.DoesNotExist:
+            return Response({"detail": "Преподаватель не найден"}, status=404)
+    elif is_teacher:
+        target_teacher = request.user
+    else:
+        raise PermissionDenied("Раздел доступен только преподавателям и администраторам")
+
+    from datetime import datetime, time, timedelta
 
     now = timezone.localtime()
-    month_start, month_end = _month_range(now)
+    tz = timezone.get_current_timezone()
+
+    def _parse_date(value):
+        if not value:
+            return None
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            return None
+
+    from_date = _parse_date(request.query_params.get("from"))
+    to_date = _parse_date(request.query_params.get("to"))
+
+    if from_date and to_date:
+        period_start = timezone.make_aware(datetime.combine(from_date, time.min), tz)
+        period_end = timezone.make_aware(
+            datetime.combine(to_date + timedelta(days=1), time.min), tz
+        )
+    else:
+        period_start, period_end = _month_range(now)
 
     lessons = (
         Lesson.objects.filter(
-            teacher=request.user,
-            starts_at__gte=month_start,
-            starts_at__lt=month_end,
+            teacher=target_teacher,
+            starts_at__gte=period_start,
+            starts_at__lt=period_end,
         )
-        .filter(Q(conducted_topic__isnull=False) | Q(conducted_description__isnull=False))
-        .exclude(conducted_topic="", conducted_description="")
+        .filter(
+            Q(conducted_topic__isnull=False, conducted_topic__gt="")
+            | Q(conducted_description__isnull=False, conducted_description__gt="")
+            | Q(attendance_records__isnull=False)
+        )
+        .distinct()
+        .select_related("group")
         .order_by("starts_at", "id")
     )
 
@@ -682,14 +759,31 @@ def teacher_salary_view(request):
             "id": lesson.id,
             "starts_at": lesson.starts_at,
             "group": lesson.group_id,
+            "group_name": lesson.group.name if lesson.group else None,
             "conducted_topic": lesson.conducted_topic,
+            "is_makeup_slot": lesson.is_makeup_slot,
         }
         for lesson in lessons
     ]
 
+    teacher_name = target_teacher.get_full_name().strip() or target_teacher.username
+
+    from apps.courses.models import Group
+    teacher_groups = Group.objects.filter(groupteacher__user=target_teacher).order_by("name")
+    groups_data = [{"id": g.id, "name": g.name} for g in teacher_groups]
+
     return Response(
         {
+            "teacher_id": target_teacher.id,
+            "teacher_name": teacher_name,
+            "teacher_phone": getattr(target_teacher, "phone", "") or "",
+            "teacher_telegram": getattr(target_teacher, "telegram_chat_id", "") or "",
+            "teacher_email": target_teacher.email or "",
+            "teacher_groups": groups_data,
             "rate_per_lesson": int(getattr(settings, "TEACHER_RATE_PER_LESSON", 1500)),
+            "rate_per_makeup": int(getattr(settings, "TEACHER_RATE_PER_MAKEUP", 1000)),
+            "from": period_start.date().isoformat(),
+            "to": (period_end - timedelta(days=1)).date().isoformat(),
             "lessons": response_data,
         }
     )

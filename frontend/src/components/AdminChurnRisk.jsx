@@ -1,23 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import { AdminLayout } from './AdminLayout';
+import { IconRefresh, IconAlert } from './KidIcons';
 
-const RISK_LABELS = {
-  high: { text: 'Высокий', cls: 'badge bg-danger' },
-  medium: { text: 'Средний', cls: 'badge bg-warning text-dark' },
-  low: { text: 'Низкий', cls: 'badge bg-success' },
+const RISK_META = {
+  high: { label: 'Высокий', bg: '#fef2f2', color: '#dc2626' },
+  medium: { label: 'Средний', bg: '#fef3c7', color: '#b45309' },
+  low: { label: 'Низкий', bg: '#ecfdf5', color: '#16a34a' },
 };
 
-const FILTERS = [
+const FILTER_PILLS = [
   { value: 'all', label: 'Все' },
-  { value: 'risk', label: 'Только high + medium' },
-  { value: 'high', label: 'Только high' },
+  { value: 'risk', label: 'Высокий + Средний' },
+  { value: 'high', label: 'Только высокий' },
 ];
 
 const formatDate = (value) => {
   if (!value) return '—';
   try {
-    return new Date(value).toLocaleString('ru-RU');
+    return new Date(value).toLocaleString('ru-RU', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    });
   } catch {
     return value;
   }
@@ -65,107 +68,136 @@ export default function AdminChurnRisk() {
 
   return (
     <AdminLayout title="KiberOne — Риск оттока">
-      <div>
-        {error && <div className="alert alert-danger">{error}</div>}
+      {error && <div className="alert alert-danger rounded-3">{error}</div>}
 
-        <div className="card mb-3">
-          <div className="card-body d-flex flex-wrap gap-3 align-items-center justify-content-between">
-            <div className="d-flex gap-3 flex-wrap">
-              <div>
-                <span className="badge bg-danger">Высокий: {counts.high}</span>
-              </div>
-              <div>
-                <span className="badge bg-warning text-dark">Средний: {counts.medium}</span>
-              </div>
-              <div>
-                <span className="badge bg-success">Низкий: {counts.low}</span>
-              </div>
-              <div className="text-muted small align-self-center">
-                Всего учеников: {rows.length}
-              </div>
-            </div>
-            <div className="d-flex gap-2 align-items-center">
-              <select
-                className="form-select form-select-sm"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                disabled={loading}
-                style={{ minWidth: 200 }}
-              >
-                {FILTERS.map((f) => (
-                  <option key={f.value} value={f.value}>{f.label}</option>
-                ))}
-              </select>
-              <button className="btn btn-outline-secondary btn-sm" onClick={load} disabled={loading}>
-                Обновить
-              </button>
-            </div>
-          </div>
+      {/* Header */}
+      <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
+        <div className="flex-grow-1">
+          <div className="text-muted small">Мониторинг риска оттока учеников</div>
+          <h3 className="fw-semibold mb-0">Риск оттока</h3>
         </div>
+        <button
+          type="button"
+          className="btn btn-light border rounded-pill px-3 d-flex align-items-center gap-2"
+          onClick={load}
+          disabled={loading}
+        >
+          <IconRefresh width={16} height={16} />
+          Обновить
+        </button>
+      </div>
 
-        <div className="card">
-          <div className="card-body p-0">
-            <div className="table-responsive">
-              <table className="table table-hover mb-0 align-middle">
-                <thead className="table-light">
-                  <tr>
-                    <th>Ученик</th>
-                    <th>Группа</th>
-                    <th>Риск</th>
-                    <th className="text-end">Подряд пропусков</th>
-                    <th className="text-end">Посещаемость 30д</th>
-                    <th className="text-end">Остаток уроков</th>
-                    <th>Оплата</th>
-                    <th>Последний урок</th>
-                    <th>Причины</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading && (
-                    <tr>
-                      <td colSpan={9} className="text-center text-muted py-4">Загрузка…</td>
-                    </tr>
-                  )}
-                  {!loading && filteredRows.length === 0 && (
-                    <tr>
-                      <td colSpan={9} className="text-center text-muted py-4">
-                        Нет учеников по выбранному фильтру.
-                      </td>
-                    </tr>
-                  )}
-                  {!loading && filteredRows.map((row) => {
-                    const risk = RISK_LABELS[row.risk_level] || RISK_LABELS.low;
-                    return (
-                      <tr key={row.student_id}>
-                        <td>
-                          <div className="fw-semibold">{row.student_name}</div>
-                          <div className="text-muted small">{row.username}{row.email ? ` · ${row.email}` : ''}</div>
-                        </td>
-                        <td>{row.group_name || '—'}</td>
-                        <td><span className={risk.cls}>{risk.text}</span></td>
-                        <td className="text-end">{row.consecutive_absences}</td>
-                        <td className="text-end">{formatRate(row.attendance_rate_30d)}</td>
-                        <td className="text-end">{row.remaining_lessons}</td>
-                        <td>
-                          {row.has_active_subscription
-                            ? <span className="badge bg-success-subtle text-success">Оплачено</span>
-                            : <span className="badge bg-danger-subtle text-danger">Не оплачено</span>}
-                        </td>
-                        <td>{formatDate(row.last_lesson_at)}</td>
-                        <td>
-                          {row.reasons && row.reasons.length
-                            ? <ul className="mb-0 ps-3 small">{row.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
-                            : <span className="text-muted small">—</span>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+      {/* Summary + filter pills */}
+      <div className="card border-0 shadow-sm rounded-4 mb-3">
+        <div className="card-body p-3 d-flex flex-wrap align-items-center gap-3">
+          <div className="d-flex gap-2 flex-wrap">
+            {Object.entries(RISK_META).map(([key, meta]) => (
+              <span
+                key={key}
+                className="badge rounded-pill d-flex align-items-center gap-1"
+                style={{ background: meta.bg, color: meta.color, fontWeight: 500, fontSize: 13 }}
+              >
+                <IconAlert width={12} height={12} />
+                {meta.label}: {counts[key] || 0}
+              </span>
+            ))}
+            <span className="text-muted small align-self-center ms-2">Всего: {rows.length}</span>
+          </div>
+          <div className="d-flex gap-2 flex-wrap ms-auto">
+            {FILTER_PILLS.map((pill) => {
+              const active = filter === pill.value;
+              return (
+                <button
+                  type="button"
+                  key={pill.value}
+                  className="btn btn-sm rounded-pill px-3"
+                  style={{
+                    background: active ? '#111827' : '#f1f3f5',
+                    color: active ? '#fff' : '#374151',
+                    border: 'none',
+                  }}
+                  onClick={() => setFilter(pill.value)}
+                  disabled={loading}
+                >
+                  {pill.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
+
+      {/* Student risk cards */}
+      {loading ? (
+        <div className="text-muted text-center py-4">Загрузка…</div>
+      ) : filteredRows.length === 0 ? (
+        <div className="card border-0 shadow-sm rounded-4">
+          <div className="card-body p-4 text-center text-muted">Нет учеников по выбранному фильтру.</div>
+        </div>
+      ) : (
+        <div className="d-flex flex-column gap-3">
+          {filteredRows.map((row) => {
+            const meta = RISK_META[row.risk_level] || RISK_META.low;
+            return (
+              <div key={row.student_id} className="card border-0 shadow-sm rounded-4">
+                <div className="card-body p-3">
+                  <div className="d-flex flex-wrap align-items-start gap-3">
+                    {/* Name */}
+                    <div className="flex-grow-1" style={{ minWidth: 180 }}>
+                      <div className="fw-semibold">{row.student_name}</div>
+                      <div className="text-muted small">{row.username}{row.email ? ` · ${row.email}` : ''}</div>
+                      <div className="text-muted small">Группа: {row.group_name || '—'}</div>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="d-flex flex-wrap gap-3" style={{ minWidth: 260 }}>
+                      <div className="text-center">
+                        <div className="text-muted small">Подряд</div>
+                        <div className="fw-semibold">{row.consecutive_absences}</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-muted small">Посещ. 30д</div>
+                        <div className="fw-semibold">{formatRate(row.attendance_rate_30d)}</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-muted small">Остаток</div>
+                        <div className="fw-semibold">{row.remaining_lessons}</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-muted small">Оплата</div>
+                        <div className="fw-semibold">
+                          {row.has_active_subscription
+                            ? <span style={{ color: '#16a34a' }}>Да</span>
+                            : <span style={{ color: '#dc2626' }}>Нет</span>}
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-muted small">Посл. урок</div>
+                        <div className="fw-semibold">{formatDate(row.last_lesson_at)}</div>
+                      </div>
+                    </div>
+
+                    {/* Risk + reasons */}
+                    <div className="d-flex flex-column align-items-end gap-2" style={{ minWidth: 120 }}>
+                      <span
+                        className="badge rounded-pill"
+                        style={{ background: meta.bg, color: meta.color, fontWeight: 500 }}
+                      >
+                        {meta.label}
+                      </span>
+                      {row.reasons && row.reasons.length > 0 ? (
+                        <div className="text-muted small text-end">
+                          {row.reasons.map((r, i) => <div key={i}>{r}</div>)}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </AdminLayout>
   );
 }

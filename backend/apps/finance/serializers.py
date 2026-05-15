@@ -7,7 +7,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Subscription
-        fields = ['id', 'student', 'total_lessons', 'remaining_lessons', 'is_active', 'created_at', 'updated_at']
+        fields = ['id', 'student', 'total_lessons', 'remaining_lessons', 'valid_from', 'valid_until', 'is_active', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def validate_total_lessons(self, value):
@@ -29,7 +29,7 @@ class SubscriptionDetailSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Subscription
-        fields = ['id', 'total_lessons', 'remaining_lessons', 'is_active', 'created_at', 'updated_at', 'payments']
+        fields = ['id', 'total_lessons', 'remaining_lessons', 'valid_from', 'valid_until', 'is_active', 'created_at', 'updated_at', 'payments']
         read_only_fields = fields
 
     def get_payments(self, obj):
@@ -94,5 +94,5 @@ class SubscriptionListSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Subscription
-        fields = ['id', 'student', 'student_name', 'total_lessons', 'remaining_lessons', 'is_active', 'created_at']
+        fields = ['id', 'student', 'student_name', 'total_lessons', 'remaining_lessons', 'valid_from', 'valid_until', 'is_active', 'created_at']
         read_only_fields = fields

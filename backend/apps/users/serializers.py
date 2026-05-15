@@ -1,8 +1,35 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from apps.courses.models import Group, GroupStudent
 
-from .models import ParentProfile, Role, StudentProfile, StudentProject, StudentProjectImage, StudentProjectLike
+
+def _absolute_media_url(url: str) -> str:
+    """Построить абсолютный URL к медиа, доступный из браузера.
+
+    Использует PUBLIC_FRONTEND_URL, т.к. запросы к API идут через Vite-прокси,
+    и request.build_absolute_uri возвращает несуществующий для браузера хост.
+    """
+    if not url:
+        return ""
+    if url.startswith("http://") or url.startswith("https://"):
+        return url
+    base = getattr(settings, "PUBLIC_FRONTEND_URL", "").rstrip("/")
+    if not base:
+        return url
+    if not url.startswith("/"):
+        url = "/" + url
+    return f"{base}{url}"
+
+from .models import (
+    ParentProfile,
+    Role,
+    StudentProfile,
+    StudentProject,
+    StudentProjectFile,
+    StudentProjectImage,
+    StudentProjectLike,
+)
 
 User = get_user_model()
 
@@ -207,6 +234,7 @@ class StudentProjectSerializer(serializers.ModelSerializer):
     student_id = serializers.IntegerField(source="student.id", read_only=True)
     student_name = serializers.SerializerMethodField()
     images = serializers.SerializerMethodField()
+    files = serializers.SerializerMethodField()
     likes_count = serializers.SerializerMethodField()
     likes_week = serializers.SerializerMethodField()
     liked_by_me = serializers.SerializerMethodField()
@@ -221,6 +249,7 @@ class StudentProjectSerializer(serializers.ModelSerializer):
             "description",
             "project_url",
             "images",
+            "files",
             "likes_count",
             "likes_week",
             "liked_by_me",
@@ -231,6 +260,7 @@ class StudentProjectSerializer(serializers.ModelSerializer):
             "student_id",
             "student_name",
             "images",
+            "files",
             "likes_count",
             "likes_week",
             "liked_by_me",
@@ -250,9 +280,26 @@ class StudentProjectSerializer(serializers.ModelSerializer):
         payload = []
         for image in images.all():
             url = image.image.url if image.image else ""
-            if request and url:
-                url = request.build_absolute_uri(url)
+            url = _absolute_media_url(url)
             payload.append({"id": image.id, "url": url})
+        return payload
+
+    def get_files(self, obj):
+        files = getattr(obj, "files", None)
+        if files is None:
+            files = StudentProjectFile.objects.filter(project=obj)
+
+        payload = []
+        for item in files.all():
+            url = item.file.url if item.file else ""
+            url = _absolute_media_url(url)
+            name = item.original_name or (item.file.name.rsplit("/", 1)[-1] if item.file else "")
+            payload.append({
+                "id": item.id,
+                "url": url,
+                "name": name,
+                "size": item.size,
+            })
         return payload
 
     def get_likes_count(self, obj):

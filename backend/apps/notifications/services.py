@@ -182,13 +182,30 @@ def send_low_balance_payment_reminders(threshold=None):
     if threshold is None:
         threshold = settings.PAYMENT_REMINDER_LESSON_THRESHOLD
 
-    subscriptions = Subscription.objects.filter(
+    from datetime import date, timedelta as td
+
+    today = date.today()
+    soon = today + td(days=threshold)
+
+    # Legacy lesson-count подписки с малым остатком
+    lesson_subs = Subscription.objects.filter(
         is_active=True,
+        valid_from__isnull=True,
         remaining_lessons__lte=threshold,
     ).select_related("student")
 
+    # Period-based подписки, истекающие скоро
+    period_subs = Subscription.objects.filter(
+        is_active=True,
+        valid_from__isnull=False,
+        valid_until__lte=soon,
+        valid_until__gte=today,
+    ).select_related("student")
+
+    subscriptions = list(lesson_subs) + list(period_subs)
+
     totals = {
-        "subscriptions": subscriptions.count(),
+        "subscriptions": len(subscriptions),
         "sent": 0,
         "failed": 0,
         "skipped": 0,
@@ -196,19 +213,30 @@ def send_low_balance_payment_reminders(threshold=None):
 
     for subscription in subscriptions:
         student = subscription.student
+        is_period = subscription.valid_from is not None
         context = {
             "student_name": student.get_full_name() or student.username,
             "remaining_lessons": subscription.remaining_lessons,
+            "valid_until": str(subscription.valid_until) if subscription.valid_until else "",
         }
-        message = _render_template(
-            NotificationTemplate.EventType.PAYMENT_REMINDER,
-            context,
-            fallback=(
+        if is_period:
+            fallback_text = (
+                f"💳 Напоминание об оплате\n"
+                f"Ученик: {context['student_name']}\n"
+                f"Абонемент истекает: {context['valid_until']}\n"
+                f"Пожалуйста, продлите абонемент."
+            )
+        else:
+            fallback_text = (
                 f"💳 Напоминание об оплате\n"
                 f"Ученик: {context['student_name']}\n"
                 f"Осталось занятий: {context['remaining_lessons']}\n"
                 f"Пожалуйста, пополните абонемент."
-            ),
+            )
+        message = _render_template(
+            NotificationTemplate.EventType.PAYMENT_REMINDER,
+            context,
+            fallback=fallback_text,
         )
 
         for parent_profile in _parent_users_for_student(student.id):

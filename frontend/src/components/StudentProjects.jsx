@@ -16,6 +16,7 @@ export const StudentProjects = () => {
   const [description, setDescription] = useState('');
   const [projectUrl, setProjectUrl] = useState('');
   const [photos, setPhotos] = useState([]);
+  const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -80,12 +81,14 @@ export const StudentProjects = () => {
         description: description.trim(),
         project_url: projectUrl.trim(),
         photos,
+        files: attachments,
       });
       setSuccess('Проект добавлен в портфолио.');
       setTitle('');
       setDescription('');
       setProjectUrl('');
       setPhotos([]);
+      setAttachments([]);
       await loadProjects();
     } catch (saveError) {
       setError(saveError.message || 'Не удалось добавить проект.');
@@ -153,6 +156,21 @@ export const StudentProjects = () => {
                       <div className="form-text">Выбрано фото: {photos.length}</div>
                     )}
                   </div>
+                  <div className="mb-3">
+                    <label className="form-label">Файлы (любого формата, до 10 шт., до 25 МБ)</label>
+                    <input
+                      className="form-control"
+                      type="file"
+                      multiple
+                      onChange={(e) => setAttachments(Array.from(e.target.files || []))}
+                      disabled={saving}
+                    />
+                    {attachments.length > 0 && (
+                      <div className="form-text">
+                        Выбрано файлов: {attachments.length} ({attachments.map((f) => f.name).join(', ')})
+                      </div>
+                    )}
+                  </div>
                   <button className="btn btn-primary btn-sm" type="submit" disabled={saving || !title.trim()}>
                     {saving ? 'Сохранение...' : 'Добавить'}
                   </button>
@@ -209,6 +227,20 @@ export const StudentProjects = () => {
                                     style={{ width: 96, height: 72, objectFit: 'cover', borderRadius: 6 }}
                                   />
                                 ))}
+                              </div>
+                            )}
+                            {Array.isArray(project.files) && project.files.length > 0 && (
+                              <div className="mt-2">
+                                <div className="text-muted small">Файлы:</div>
+                                <ul className="list-unstyled mb-0 small">
+                                  {project.files.map((f) => (
+                                    <li key={f.id}>
+                                      <a href={f.url} target="_blank" rel="noreferrer" download={f.name}>
+                                        {f.name}
+                                      </a>
+                                    </li>
+                                  ))}
+                                </ul>
                               </div>
                             )}
                           </div>

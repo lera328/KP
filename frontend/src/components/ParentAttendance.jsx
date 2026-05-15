@@ -3,10 +3,10 @@ import api from '../services/api';
 import { AppLayout, parentNavItems } from './AppLayout';
 import { MakeupSlotPicker } from './MakeupSlotPicker';
 
-const STATUS_BADGES = {
-  present: { label: 'Присутствовал', cls: 'text-bg-success' },
-  absent: { label: 'Пропуск', cls: 'text-bg-danger' },
-  makeup: { label: 'Отработка', cls: 'text-bg-info' },
+const STATUS_META = {
+  present: { label: 'Был', color: '#16a34a', bg: '#ecfdf5' },
+  absent: { label: 'Пропуск', color: '#dc2626', bg: '#fef2f2' },
+  makeup: { label: 'Отработка', color: '#2563eb', bg: '#eff6ff' },
 };
 
 const MAKEUP_STATUS_LABELS = {
@@ -19,8 +19,7 @@ const formatDateTime = (value) => {
   if (!value) return '-';
   return new Date(value).toLocaleString('ru-RU', {
     day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
+    month: 'short',
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -64,6 +63,7 @@ export const ParentAttendance = () => {
   // даже если рефетч с сервера ещё не дошёл — чтобы UI не показывал CTA.
   const [optimisticRequested, setOptimisticRequested] = useState(() => new Set());
   const [pickerSuccess, setPickerSuccess] = useState('');
+  const [selectedRecord, setSelectedRecord] = useState(null);
 
   const loadAll = async () => {
     setLoading(true);
@@ -272,65 +272,69 @@ export const ParentAttendance = () => {
     }
   };
 
-  const renderStatusBadge = (status) => {
-    const meta = STATUS_BADGES[status] || { label: status, cls: 'text-bg-secondary' };
-    return <span className={`badge ${meta.cls}`}>{meta.label}</span>;
-  };
-
   const renderMakeupForAbsence = (record) => {
     const m = makeupByAbsence.get(Number(record.id));
     if (m) {
       return (
-        <div className="small">
-          <span className="badge text-bg-info me-1">
-            {MAKEUP_STATUS_LABELS[m.status] || m.status}
-          </span>
-          {m.makeup_starts_at ? formatDateTime(m.makeup_starts_at) : '—'}
-        </div>
+        <span className="badge rounded-pill" style={{ background: '#eff6ff', color: '#2563eb', fontWeight: 500 }}>
+          {MAKEUP_STATUS_LABELS[m.status] || m.status}{m.makeup_starts_at ? ` · ${formatDateTime(m.makeup_starts_at)}` : ''}
+        </span>
       );
     }
     if (optimisticRequested.has(Number(record.id))) {
-      return (
-        <span className="badge text-bg-info">Запрос на отработку отправлен</span>
-      );
+      return <span className="badge rounded-pill" style={{ background: '#eff6ff', color: '#2563eb', fontWeight: 500 }}>Запрос отправлен</span>;
     }
     if (new Date(record.lesson_starts_at) > new Date()) {
       return <span className="text-muted small">Урок ещё не прошёл</span>;
     }
     if (!eligibleAbsenceIds.has(Number(record.id))) {
-      return (
-        <span className="text-muted small" title="Запись доступна только для трёх последних занятий ребёнка">
-          Срок записи на отработку истёк
-        </span>
-      );
+      return <span className="text-muted small">Срок записи истёк</span>;
     }
     return (
       <button
         type="button"
-        className="btn btn-sm btn-outline-primary"
-        onClick={() => handleOpenPicker(record.id)}
+        className="btn btn-sm btn-dark rounded-pill px-3"
+        onClick={(e) => { e.stopPropagation(); handleOpenPicker(record.id); }}
       >
-        Записаться на отработку
+        Записать на отработку
       </button>
     );
   };
 
   return (
-    <AppLayout title="KiberOne — Родитель" navItems={parentNavItems}>
-      {error ? <div className="alert alert-danger">{error}</div> : null}
-      {success ? <div className="alert alert-success">{success}</div> : null}
-
-      {/* Селектор детей */}
-      <div className="d-flex flex-wrap gap-2 mb-3 align-items-center">
+    <AppLayout title="KiberOne — Посещаемость" navItems={parentNavItems} kidMode>
+      <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <h1 className="fw-semibold mb-0" style={{ fontSize: '1.75rem' }}>Посещаемость</h1>
         <button
           type="button"
-          className={`btn btn-sm ${activeChildId === 'all' ? 'btn-primary' : 'btn-outline-primary'}`}
+          className="btn btn-light border rounded-pill px-3 ms-auto"
+          onClick={loadAll}
+          disabled={loading}
+        >
+          Обновить
+        </button>
+      </div>
+
+      {error && <div className="alert alert-danger rounded-3">{error}</div>}
+      {success && <div className="alert alert-success rounded-3">{success}</div>}
+
+      {/* Селектор детей */}
+      <div className="d-flex flex-wrap gap-2 mb-3">
+        <button
+          type="button"
+          className="btn btn-sm rounded-pill px-3"
+          style={{
+            background: activeChildId === 'all' ? '#111827' : '#f8f9fb',
+            color: activeChildId === 'all' ? '#fff' : '#374151',
+            border: `1px solid ${activeChildId === 'all' ? '#111827' : '#e5e7eb'}`,
+            fontWeight: 600,
+          }}
           onClick={() => setActiveChildId('all')}
         >
           Все дети
-          {totalPending > 0 ? (
-            <span className="badge text-bg-warning ms-2">{totalPending}</span>
-          ) : null}
+          {totalPending > 0 && (
+            <span className="badge rounded-pill ms-2" style={{ background: '#fef3c7', color: '#b45309', fontSize: '0.65rem' }}>{totalPending}</span>
+          )}
         </button>
         {children.map((child) => {
           const pending = pendingByChild.get(child.id) || 0;
@@ -339,115 +343,62 @@ export const ParentAttendance = () => {
             <button
               key={child.id}
               type="button"
-              className={`btn btn-sm d-flex align-items-center gap-2 ${
-                active ? 'btn-primary' : 'btn-outline-primary'
-              }`}
+              className="btn btn-sm rounded-pill px-3 d-flex align-items-center gap-2"
+              style={{
+                background: active ? '#111827' : '#f8f9fb',
+                color: active ? '#fff' : '#374151',
+                border: `1px solid ${active ? '#111827' : '#e5e7eb'}`,
+                fontWeight: 600,
+              }}
               onClick={() => setActiveChildId(child.id)}
             >
               <span
                 className="rounded-circle d-inline-flex align-items-center justify-content-center"
-                style={{
-                  width: 24,
-                  height: 24,
-                  background: active ? 'rgba(255,255,255,0.25)' : '#e9ecef',
-                  color: active ? '#fff' : '#495057',
-                  fontSize: 11,
-                  fontWeight: 600,
-                }}
+                style={{ width: 22, height: 22, background: active ? 'rgba(255,255,255,0.2)' : '#eef2ff', color: active ? '#fff' : '#3730a3', fontSize: 10, fontWeight: 700 }}
               >
                 {childInitials(child)}
               </span>
               {childName(child)}
-              {pending > 0 ? (
-                <span className="badge text-bg-warning">{pending}</span>
-              ) : null}
+              {pending > 0 && (
+                <span className="badge rounded-pill" style={{ background: '#fef3c7', color: '#b45309', fontSize: '0.6rem' }}>{pending}</span>
+              )}
             </button>
           );
         })}
-        <button
-          className="btn btn-sm btn-outline-secondary ms-auto"
-          onClick={loadAll}
-          disabled={loading}
-        >
-          Обновить
-        </button>
       </div>
 
       {loading ? (
-        <div className="card"><div className="card-body">Загрузка…</div></div>
+        <div className="d-flex flex-column gap-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="kid-skeleton" style={{ height: 80, borderRadius: 16 }} />
+          ))}
+        </div>
       ) : (
         <>
           {/* KPI */}
-          <div className="row g-3 mb-3">
-            <div className="col-6 col-md-3">
-              <div className="card h-100">
-                <div className="card-body">
-                  <div className="text-muted small">Всего занятий</div>
-                  <div className="fs-3 fw-bold">{kpi.total}</div>
-                </div>
-              </div>
-            </div>
-            <div className="col-6 col-md-3">
-              <div className="card h-100 border-success">
-                <div className="card-body">
-                  <div className="text-muted small">Посещено</div>
-                  <div className="fs-3 fw-bold text-success">{kpi.present + kpi.makeup}</div>
-                  <div className="small text-muted">из них отработок: {kpi.makeup}</div>
-                </div>
-              </div>
-            </div>
-            <div className="col-6 col-md-3">
-              <div className="card h-100 border-danger">
-                <div className="card-body">
-                  <div className="text-muted small">Пропусков</div>
-                  <div className="fs-3 fw-bold text-danger">{kpi.absent}</div>
-                </div>
-              </div>
-            </div>
-            <div className="col-6 col-md-3">
-              <div className="card h-100">
-                <div className="card-body">
-                  <div className="text-muted small">Посещаемость</div>
-                  <div className="fs-3 fw-bold">{kpi.rate}%</div>
-                  <div className="progress mt-1" style={{ height: 6 }}>
-                    <div
-                      className={`progress-bar ${
-                        kpi.rate >= 80 ? 'bg-success' : kpi.rate >= 50 ? 'bg-warning' : 'bg-danger'
-                      }`}
-                      style={{ width: `${kpi.rate}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="row g-2 mb-3">
+            <KpiTile label="Всего" value={kpi.total} />
+            <KpiTile label="Посещено" value={kpi.present + kpi.makeup} accent="#16a34a" sub={kpi.makeup > 0 ? `отработок: ${kpi.makeup}` : null} />
+            <KpiTile label="Пропуски" value={kpi.absent} accent="#dc2626" />
+            <KpiTile label="Посещаемость" value={`${kpi.rate}%`} accent={kpi.rate >= 80 ? '#16a34a' : kpi.rate >= 50 ? '#d97706' : '#dc2626'} />
           </div>
 
           {/* Требуют внимания */}
-          {pendingAbsences.length > 0 ? (
-            <div className="card mb-3 border-warning">
-              <div className="card-header bg-warning-subtle">
-                <strong>⚠ Требуют внимания — пропуски без отработки ({pendingAbsences.length})</strong>
-                <div className="text-muted small mt-1">
-                  Запись на отработку доступна только для трёх последних занятий ребёнка.
+          {pendingAbsences.length > 0 && (
+            <div className="card border-0 shadow-sm rounded-4 mb-3" style={{ borderLeft: '4px solid #f59e0b' }}>
+              <div className="card-body p-4">
+                <div className="fw-semibold mb-1" style={{ color: '#b45309' }}>
+                  Требуют внимания — {pendingAbsences.length} пропуск(ов) без отработки
                 </div>
-              </div>
-              <div className="card-body">
-                <div className="d-flex flex-column gap-3">
+                <div className="text-muted small mb-3">Запись доступна для 3 последних занятий ребёнка</div>
+                <div className="d-flex flex-column gap-2">
                   {pendingAbsences.map((record) => {
                     const child = childMap.get(record.student_id);
                     return (
-                      <div
-                        key={record.id}
-                        className="d-flex flex-wrap justify-content-between align-items-start gap-3 pb-3 border-bottom"
-                      >
+                      <div key={record.id} className="d-flex flex-wrap justify-content-between align-items-center gap-2 rounded-3 p-3" style={{ background: '#fffbeb' }}>
                         <div>
-                          <div className="fw-semibold">
-                            {childName(child)} — {record.group_name || ''}
-                          </div>
-                          <div className="text-muted small">
-                            {formatDate(record.lesson_starts_at)}
-                            {record.lesson_topic ? ` · ${record.lesson_topic}` : ''}
-                          </div>
+                          <div className="fw-semibold small">{childName(child)} — {record.group_name || ''}</div>
+                          <div className="text-muted small">{formatDate(record.lesson_starts_at)}{record.lesson_topic ? ` · ${record.lesson_topic}` : ''}</div>
                         </div>
                         <div>{renderMakeupForAbsence(record)}</div>
                       </div>
@@ -456,132 +407,102 @@ export const ParentAttendance = () => {
                 </div>
               </div>
             </div>
-          ) : null}
+          )}
 
-          {/* Все записи */}
-          <div className="card mb-3">
-            <div className="card-header">
-              <strong>История занятий</strong>
-              <span className="text-muted small ms-2">({activeRecords.length})</span>
-            </div>
-            <div className="card-body p-0">
+          {/* История занятий */}
+          <div className="card border-0 shadow-sm rounded-4 mb-3">
+            <div className="card-body p-4">
+              <div className="fw-semibold mb-3">История занятий <span className="text-muted fw-normal small">({activeRecords.length})</span></div>
               {activeRecords.length === 0 ? (
-                <div className="p-3 text-muted">Записи посещаемости пока отсутствуют.</div>
+                <div className="text-muted text-center py-3">Записей пока нет.</div>
               ) : (
-                <div className="table-responsive">
-                  <table className="table table-hover mb-0 align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        <th style={{ width: 160 }}>Дата</th>
-                        {activeChildId === 'all' ? <th>Ребёнок</th> : null}
-                        <th>Группа / тема</th>
-                        <th style={{ width: 130 }}>Статус</th>
-                        <th style={{ width: 70 }}>Оценка</th>
-                        <th>ДЗ / комментарий</th>
-                        <th style={{ minWidth: 220 }}>Отработка</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activeRecords.map((record) => {
-                        const child = childMap.get(record.student_id);
-                        return (
-                          <tr key={record.id}>
-                            <td>{formatDateTime(record.lesson_starts_at)}</td>
-                            {activeChildId === 'all' ? (
-                              <td className="small">{childName(child) || '-'}</td>
-                            ) : null}
-                            <td>
-                              <div>{record.group_name || '-'}</div>
-                              {record.lesson_topic ? (
-                                <small className="text-muted">{record.lesson_topic}</small>
-                              ) : null}
-                            </td>
-                            <td>{renderStatusBadge(record.status)}</td>
-                            <td>{record.grade != null ? record.grade : '—'}</td>
-                            <td className="small" style={{ minWidth: 220 }}>
-                              {record.homework ? (
-                                <div>
-                                  <strong>ДЗ:</strong> {record.homework}
-                                </div>
-                              ) : null}
-                              {record.teacher_comment ? (
-                                <div className="text-muted">{record.teacher_comment}</div>
-                              ) : null}
-                              {!record.homework && !record.teacher_comment ? '—' : null}
-                            </td>
-                            <td>
-                              {record.status === 'absent' ? renderMakeupForAbsence(record) : '—'}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                <div className="d-flex flex-column gap-2">
+                  {activeRecords.map((record) => {
+                    const child = childMap.get(record.student_id);
+                    const meta = STATUS_META[record.status] || { label: record.status, color: '#6b7280', bg: '#f3f4f6' };
+                    return (
+                      <div key={record.id} className="d-flex flex-wrap align-items-center gap-3 rounded-3 p-3" style={{ background: '#f8f9fb', cursor: 'pointer' }} onClick={() => setSelectedRecord(record)}>
+                        <div className="flex-shrink-0" style={{ minWidth: 90 }}>
+                          <div className="fw-semibold small">{formatDateTime(record.lesson_starts_at)}</div>
+                        </div>
+                        {activeChildId === 'all' && (
+                          <span className="badge rounded-pill" style={{ background: '#eef2ff', color: '#3730a3', fontWeight: 500 }}>{childName(child)}</span>
+                        )}
+                        <div className="flex-grow-1" style={{ minWidth: 120 }}>
+                          <div className="small fw-semibold">{record.group_name || '-'}</div>
+                          {record.lesson_topic && <div className="text-muted small">{record.lesson_topic}</div>}
+                        </div>
+                        <span className="badge rounded-pill" style={{ background: meta.bg, color: meta.color, fontWeight: 500 }}>{meta.label}</span>
+                        {record.grade != null && (
+                          <span className="badge rounded-pill" style={{ background: '#fef3c7', color: '#b45309', fontWeight: 600 }}>{record.grade}</span>
+                        )}
+                        {record.status === 'absent' && (
+                          <div className="flex-shrink-0">{renderMakeupForAbsence(record)}</div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Сводка по отработкам */}
-          {activeMakeups.length > 0 ? (
-            <div className="card">
-              <div className="card-header">
-                <strong>Отработки</strong>
-                <span className="text-muted small ms-2">({activeMakeups.length})</span>
-              </div>
-              <div className="card-body p-0">
-                <div className="table-responsive">
-                  <table className="table table-sm mb-0 align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        {activeChildId === 'all' ? <th>Ребёнок</th> : null}
-                        <th>Пропущенный урок</th>
-                        <th>Слот отработки</th>
-                        <th>Статус</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activeMakeups.map((item) => {
-                        const child = childMap.get(item.student_id);
-                        return (
-                          <tr key={item.id}>
-                            {activeChildId === 'all' ? (
-                              <td className="small">{childName(child) || '-'}</td>
-                            ) : null}
-                            <td>
-                              <div>
-                                {item.absence_starts_at ? formatDateTime(item.absence_starts_at) : '-'}
-                              </div>
-                              {item.absence_group_name ? (
-                                <small className="text-muted">{item.absence_group_name}</small>
-                              ) : null}
-                            </td>
-                            <td>
-                              <div>
-                                {item.makeup_starts_at ? formatDateTime(item.makeup_starts_at) : '-'}
-                              </div>
-                              {item.makeup_group_name ? (
-                                <small className="text-muted">{item.makeup_group_name}</small>
-                              ) : null}
-                            </td>
-                            <td>
-                              <span className="badge text-bg-info">
-                                {MAKEUP_STATUS_LABELS[item.status] || item.status}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+          {/* ДЗ и комментарии — компактный блок */}
+          {activeRecords.some((r) => r.homework || r.teacher_comment) && (
+            <div className="card border-0 shadow-sm rounded-4 mb-3">
+              <div className="card-body p-4">
+                <div className="fw-semibold mb-3">Домашние задания и комментарии</div>
+                <div className="d-flex flex-column gap-2">
+                  {activeRecords.filter((r) => r.homework || r.teacher_comment).map((record) => (
+                    <div key={`hw-${record.id}`} className="rounded-3 p-3" style={{ background: '#f8f9fb' }}>
+                      <div className="d-flex flex-wrap gap-2 align-items-center mb-1">
+                        <span className="fw-semibold small">{formatDateTime(record.lesson_starts_at)}</span>
+                        <span className="text-muted small">{record.group_name}</span>
+                      </div>
+                      {record.homework && <div className="small"><strong>ДЗ:</strong> {record.homework}</div>}
+                      {record.teacher_comment && <div className="small text-muted">{record.teacher_comment}</div>}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
-          ) : null}
+          )}
+
+          {/* Отработки */}
+          {activeMakeups.length > 0 && (
+            <div className="card border-0 shadow-sm rounded-4 mb-3">
+              <div className="card-body p-4">
+                <div className="fw-semibold mb-3">Отработки <span className="text-muted fw-normal small">({activeMakeups.length})</span></div>
+                <div className="d-flex flex-column gap-2">
+                  {activeMakeups.map((item) => {
+                    const child = childMap.get(item.student_id);
+                    return (
+                      <div key={item.id} className="d-flex flex-wrap align-items-center gap-3 rounded-3 p-3" style={{ background: '#f8f9fb' }}>
+                        {activeChildId === 'all' && (
+                          <span className="badge rounded-pill" style={{ background: '#eef2ff', color: '#3730a3', fontWeight: 500 }}>{childName(child)}</span>
+                        )}
+                        <div className="flex-grow-1" style={{ minWidth: 140 }}>
+                          <div className="small"><strong>Пропуск:</strong> {item.absence_starts_at ? formatDateTime(item.absence_starts_at) : '-'} {item.absence_group_name && `· ${item.absence_group_name}`}</div>
+                          <div className="small"><strong>Отработка:</strong> {item.makeup_starts_at ? formatDateTime(item.makeup_starts_at) : '-'} {item.makeup_group_name && `· ${item.makeup_group_name}`}</div>
+                        </div>
+                        <span className="badge rounded-pill" style={{ background: '#eff6ff', color: '#2563eb', fontWeight: 500 }}>
+                          {MAKEUP_STATUS_LABELS[item.status] || item.status}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 
-      {pickerRecordId !== null ? (
+      {selectedRecord && (
+        <LessonDetailModal record={selectedRecord} onClose={() => setSelectedRecord(null)} />
+      )}
+
+      {pickerRecordId !== null && (
         <MakeupSlotPicker
           absence={records.find((r) => Number(r.id) === Number(pickerRecordId)) || null}
           slots={suggestions[pickerRecordId] || []}
@@ -595,7 +516,74 @@ export const ParentAttendance = () => {
           onClose={handleClosePicker}
           successMessage={pickerSuccess}
         />
-      ) : null}
+      )}
     </AppLayout>
   );
 };
+
+const LessonDetailModal = ({ record, onClose }) => {
+  const meta = STATUS_META[record.status] || { label: record.status, color: '#6b7280', bg: '#f3f4f6' };
+  return (
+    <div className="modal fade show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-content rounded-4 border-0 shadow-lg">
+          <div className="modal-header border-0">
+            <div>
+              <div className="text-muted small">{formatDateTime(record.lesson_starts_at)}</div>
+              <h5 className="modal-title fw-semibold mb-0">{record.group_name || 'Занятие'}</h5>
+            </div>
+            <button type="button" className="btn-close" onClick={onClose} />
+          </div>
+          <div className="modal-body pt-0">
+            <div className="d-flex flex-wrap gap-2 mb-3">
+              <span className="badge rounded-pill" style={{ background: meta.bg, color: meta.color, fontWeight: 500 }}>{meta.label}</span>
+              {record.grade != null && (
+                <span className="badge rounded-pill" style={{ background: '#fef3c7', color: '#b45309', fontWeight: 600 }}>Оценка: {record.grade}</span>
+              )}
+            </div>
+            {record.lesson_topic && (
+              <div className="rounded-3 p-3 mb-2" style={{ background: '#f8f9fb' }}>
+                <div className="text-muted small">Тема</div>
+                <div className="fw-semibold">{record.lesson_topic}</div>
+              </div>
+            )}
+            {record.conducted_description && (
+              <div className="rounded-3 p-3 mb-2" style={{ background: '#f8f9fb' }}>
+                <div className="text-muted small">Описание урока</div>
+                <div>{record.conducted_description}</div>
+              </div>
+            )}
+            {record.homework && (
+              <div className="rounded-3 p-3 mb-2" style={{ background: '#eff6ff' }}>
+                <div className="text-muted small">Домашнее задание</div>
+                <div className="fw-semibold">{record.homework}</div>
+              </div>
+            )}
+            {record.teacher_comment && (
+              <div className="rounded-3 p-3 mb-2" style={{ background: '#f8f9fb' }}>
+                <div className="text-muted small">Комментарий преподавателя</div>
+                <div>{record.teacher_comment}</div>
+              </div>
+            )}
+            {!record.lesson_topic && !record.conducted_description && !record.homework && !record.teacher_comment && (
+              <div className="text-muted text-center py-3">Подробности по этому занятию пока не добавлены.</div>
+            )}
+          </div>
+          <div className="modal-footer border-0">
+            <button type="button" className="btn btn-light border rounded-pill px-4" onClick={onClose}>Закрыть</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const KpiTile = ({ label, value, accent, sub }) => (
+  <div className="col-6 col-md-3">
+    <div className="rounded-3 p-3 h-100" style={{ background: '#f8f9fb' }}>
+      <div className="text-muted small">{label}</div>
+      <div className="fw-semibold" style={{ fontSize: '1.4rem', lineHeight: 1.2, color: accent || '#111827' }}>{value}</div>
+      {sub && <div className="text-muted small">{sub}</div>}
+    </div>
+  </div>
+);

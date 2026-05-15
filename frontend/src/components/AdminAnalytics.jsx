@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import { AdminLayout } from './AdminLayout';
+import { IconRefresh, IconChart } from './KidIcons';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -27,17 +28,15 @@ const formatMoney = (value) => {
   return `${num.toLocaleString('ru-RU')} ₽`;
 };
 
-const KpiCard = ({ title, value, hint, tone = 'primary' }) => (
-  <div className="col-md-4 col-lg-3 mb-3">
-    <div className={`card border-${tone}`}>
-      <div className="card-body">
-        <div className="text-muted small">{title}</div>
-        <div className="fs-3 fw-semibold">{value}</div>
-        {hint && <div className="text-muted small">{hint}</div>}
-      </div>
-    </div>
-  </div>
-);
+const KPI_CONFIG = [
+  { key: 'students_total', label: 'Учеников', accent: '#111827', bg: '#f8f9fb' },
+  { key: 'students_at_risk', label: 'Риск оттока', accent: '#b45309', bg: '#fef3c7', hintKey: 'students_high_risk', hintLabel: 'высокий' },
+  { key: 'lessons_count', label: 'Уроков', accent: '#1d4ed8', bg: '#eff6ff', hintKey: 'attendance_records_total', hintLabel: 'отметок' },
+  { key: 'attendance_rate', label: 'Посещаемость', accent: '#16a34a', bg: '#ecfdf5', fmt: formatRate, hintKey: 'absences', hintLabel: 'пропусков' },
+  { key: 'average_grade', label: 'Ср. оценка', accent: '#6d28d9', bg: '#f5f3ff', fmt: formatGrade },
+  { key: 'payments_count', label: 'Платежей', accent: '#111827', bg: '#f8f9fb' },
+  { key: 'revenue_total', label: 'Выручка', accent: '#16a34a', bg: '#ecfdf5', fmt: formatMoney },
+];
 
 export default function AdminAnalytics() {
   const [from, setFrom] = useState(firstOfMonth());
@@ -103,158 +102,127 @@ export default function AdminAnalytics() {
 
   return (
     <AdminLayout title="KiberOne — Аналитика">
-      <div>
-        {error && <div className="alert alert-danger">{error}</div>}
+      {error && <div className="alert alert-danger rounded-3">{error}</div>}
 
-        <form className="card mb-4" onSubmit={handleApply}>
-          <div className="card-body">
-            <div className="row g-3 align-items-end">
-              <div className="col-md-3">
-                <label className="form-label small">Период с</label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={from}
-                  onChange={(e) => setFrom(e.target.value)}
-                />
-              </div>
-              <div className="col-md-3">
-                <label className="form-label small">по</label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={to}
-                  onChange={(e) => setTo(e.target.value)}
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small">Группа</label>
-                <select
-                  className="form-select"
-                  value={groupId}
-                  onChange={(e) => setGroupId(e.target.value)}
-                >
-                  <option value="">Все группы</option>
-                  {groupsOptions.map((g) => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-2 d-flex gap-2">
-                <button type="submit" className="btn btn-primary w-100" disabled={loading}>
-                  {loading ? '...' : 'Применить'}
-                </button>
-              </div>
+      {/* Header */}
+      <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
+        <div className="flex-grow-1">
+          <div className="text-muted small">Метрики и разбивка по группам</div>
+          <h3 className="fw-semibold mb-0">Аналитика</h3>
+        </div>
+        <button
+          type="button"
+          className="btn btn-light border rounded-pill px-3 d-flex align-items-center gap-2"
+          onClick={handleExport}
+          disabled={exporting || loading}
+        >
+          <IconChart width={16} height={16} />
+          {exporting ? 'Готовлю...' : 'Экспорт CSV'}
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="card border-0 shadow-sm rounded-4 mb-4">
+        <form className="card-body p-3" onSubmit={handleApply}>
+          <div className="row g-3 align-items-end">
+            <div className="col-md-3 col-6">
+              <label className="form-label text-muted small mb-1">Период с</label>
+              <input type="date" className="form-control rounded-3" value={from} onChange={(e) => setFrom(e.target.value)} />
             </div>
-            <div className="d-flex gap-2 mt-3">
-              <button
-                type="button"
-                className="btn btn-outline-secondary btn-sm"
-                onClick={handleExport}
-                disabled={exporting || loading}
-              >
-                {exporting ? 'Готовлю...' : 'Экспорт CSV'}
+            <div className="col-md-3 col-6">
+              <label className="form-label text-muted small mb-1">по</label>
+              <input type="date" className="form-control rounded-3" value={to} onChange={(e) => setTo(e.target.value)} />
+            </div>
+            <div className="col-md-4">
+              <label className="form-label text-muted small mb-1">Группа</label>
+              <select className="form-select rounded-3" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+                <option value="">Все группы</option>
+                {groupsOptions.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="col-md-2">
+              <button type="submit" className="btn btn-dark rounded-pill w-100 d-flex align-items-center justify-content-center gap-2" disabled={loading}>
+                <IconRefresh width={14} height={14} />
+                {loading ? '...' : 'Применить'}
               </button>
-              {data?.period && (
-                <span className="text-muted small align-self-center">
-                  Период: {data.period.from} — {data.period.to}
-                </span>
-              )}
             </div>
           </div>
+          {data?.period && (
+            <div className="text-muted small mt-2">Период: {data.period.from} — {data.period.to}</div>
+          )}
         </form>
-
-        {loading && !data && (
-          <div className="text-muted text-center py-5">Загрузка…</div>
-        )}
-
-        {kpi && (
-          <>
-            <div className="row">
-              <KpiCard
-                title="Учеников активных"
-                value={kpi.students_total}
-                tone="primary"
-              />
-              <KpiCard
-                title="С риском оттока"
-                value={kpi.students_at_risk}
-                hint={`из них высокий: ${kpi.students_high_risk}`}
-                tone={kpi.students_high_risk > 0 ? 'danger' : 'warning'}
-              />
-              <KpiCard
-                title="Уроков проведено"
-                value={kpi.lessons_count}
-                hint={`всего отметок: ${kpi.attendance_records_total}`}
-                tone="info"
-              />
-              <KpiCard
-                title="Посещаемость"
-                value={formatRate(kpi.attendance_rate)}
-                hint={`пропусков: ${kpi.absences}`}
-                tone="success"
-              />
-              <KpiCard
-                title="Средняя оценка"
-                value={formatGrade(kpi.average_grade)}
-                tone="secondary"
-              />
-              <KpiCard
-                title="Платежей"
-                value={kpi.payments_count}
-                tone="dark"
-              />
-              <KpiCard
-                title="Выручка за период"
-                value={formatMoney(kpi.revenue_total)}
-                tone="success"
-              />
-            </div>
-
-            <div className="card mt-3">
-              <div className="card-header d-flex justify-content-between align-items-center">
-                <strong>Разбивка по группам</strong>
-                <span className="text-muted small">
-                  Всего уроков в выборке: {totalLessons}
-                </span>
-              </div>
-              <div className="card-body p-0">
-                <div className="table-responsive">
-                  <table className="table table-hover mb-0 align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Группа</th>
-                        <th className="text-end">Уроков</th>
-                        <th className="text-end">Учеников</th>
-                        <th className="text-end">Посещаемость</th>
-                        <th className="text-end">Средняя оценка</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {groups.length === 0 && (
-                        <tr>
-                          <td colSpan={5} className="text-center text-muted py-4">
-                            За выбранный период данных нет.
-                          </td>
-                        </tr>
-                      )}
-                      {groups.map((row) => (
-                        <tr key={row.group_id}>
-                          <td>{row.group_name}</td>
-                          <td className="text-end">{row.lessons_count}</td>
-                          <td className="text-end">{row.students_count}</td>
-                          <td className="text-end">{formatRate(row.attendance_rate)}</td>
-                          <td className="text-end">{formatGrade(row.average_grade)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
       </div>
+
+      {loading && !data && (
+        <div className="text-muted text-center py-5">Загрузка…</div>
+      )}
+
+      {kpi && (
+        <>
+          {/* KPI */}
+          <div className="row g-3 mb-4">
+            {KPI_CONFIG.map((cfg) => {
+              const raw = kpi[cfg.key];
+              const display = cfg.fmt ? cfg.fmt(raw) : (raw ?? '—');
+              const hint = cfg.hintKey ? `${cfg.hintLabel}: ${kpi[cfg.hintKey] ?? 0}` : undefined;
+              return (
+                <div className="col-md-4 col-lg-3" key={cfg.key}>
+                  <div className="card border-0 shadow-sm rounded-4 h-100">
+                    <div className="card-body p-3">
+                      <div className="text-muted small">{cfg.label}</div>
+                      <div className="fw-semibold" style={{ fontSize: 22, color: cfg.accent }}>{display}</div>
+                      {hint && <div className="text-muted small">{hint}</div>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Groups breakdown */}
+          <div className="card border-0 shadow-sm rounded-4">
+            <div className="card-body p-0">
+              <div className="px-3 py-2 border-bottom d-flex align-items-center justify-content-between">
+                <div className="fw-semibold">Разбивка по группам</div>
+                <div className="text-muted small">Уроков: {totalLessons}</div>
+              </div>
+              <div className="table-responsive">
+                <table className="table table-hover mb-0 align-middle">
+                  <thead>
+                    <tr className="text-muted small">
+                      <th className="fw-normal">Группа</th>
+                      <th className="fw-normal text-end">Уроков</th>
+                      <th className="fw-normal text-end">Учеников</th>
+                      <th className="fw-normal text-end">Посещаемость</th>
+                      <th className="fw-normal text-end">Ср. оценка</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groups.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="text-center text-muted py-4">
+                          За выбранный период данных нет.
+                        </td>
+                      </tr>
+                    )}
+                    {groups.map((row) => (
+                      <tr key={row.group_id}>
+                        <td className="fw-semibold">{row.group_name}</td>
+                        <td className="text-end">{row.lessons_count}</td>
+                        <td className="text-end">{row.students_count}</td>
+                        <td className="text-end">{formatRate(row.attendance_rate)}</td>
+                        <td className="text-end">{formatGrade(row.average_grade)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </AdminLayout>
   );
 }

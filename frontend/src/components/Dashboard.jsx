@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { TeacherSchedule } from './TeacherSchedule';
-import { StudentSchedule } from './StudentSchedule';
+import { TeacherHome } from './TeacherHome';
 import { AdminLayout } from './AdminLayout';
-import { AppLayout, parentNavItems, studentNavItems } from './AppLayout';
+import { AppLayout, parentNavItems } from './AppLayout';
 import { AdminScheduleOverview } from './AdminScheduleOverview';
+import { AdminDashboard } from './AdminDashboard';
 
 /**
  * Main Dashboard - routes to role-specific dashboard
@@ -35,134 +35,71 @@ export const Dashboard = () => {
 };
 
 /**
- * Admin Dashboard
- */
-const AdminDashboard = () => {
-  const { user } = useAuth();
-
-  return (
-    <AdminLayout title="KiberOne — Администратор">
-        <div className="row">
-          <div className="col-md-12">
-            <h1>Панель администратора</h1>
-            <p>Добро пожаловать, {user?.first_name || 'Администратор'}!</p>
-          </div>
-        </div>
-
-        <div className="mt-3">
-          <AdminScheduleOverview embedded />
-        </div>
-    </AdminLayout>
-  );
-};
-
-/**
  * Teacher Dashboard
  */
 const TeacherDashboard = () => {
-  return <TeacherSchedule />;
+  return <TeacherHome />;
 };
 
 /**
  * Parent Dashboard
  */
+const PARENT_TILES = [
+  { icon: '👨‍👩‍👧‍👦', title: 'Мои дети', desc: 'Прогресс, группы и портфолио', path: '/parent/children', accent: '#eef2ff', accentBorder: '#c7d2fe' },
+  { icon: '📅', title: 'Посещаемость', desc: 'Занятия, пропуски и отработки', path: '/parent/attendance', accent: '#ecfdf5', accentBorder: '#a7f3d0' },
+  { icon: '💳', title: 'Оплата', desc: 'Баланс и история платежей', path: '/parent/billing', accent: '#fffbeb', accentBorder: '#fde68a' },
+  { icon: '🏆', title: 'Проекты', desc: 'Лучшие работы учеников', path: '/projects', accent: '#fef2f2', accentBorder: '#fecaca' },
+];
+
 const ParentDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
   return (
-    <AppLayout title="KiberOne — Родитель" navItems={parentNavItems}>
-      <div>
-        <h1>Панель родителя</h1>
-        <p>Добро пожаловать, {user?.first_name || 'Родитель'}!</p>
+    <AppLayout title="KiberOne — Родитель" navItems={parentNavItems} kidMode>
+      <div className="mb-4">
+        <h1 className="fw-semibold mb-1" style={{ fontSize: '1.75rem' }}>
+          Добро пожаловать{user?.first_name ? `, ${user.first_name}` : ''}!
+        </h1>
+        <div className="text-muted">Выберите раздел для просмотра</div>
+      </div>
 
-        <div className="row mt-4">
-          <div className="col-md-4">
-            <div className="card">
-              <div className="card-body">
-                <h5 className="card-title">Мои дети</h5>
-                <p className="card-text">Просмотр прогресса ваших детей</p>
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => navigate('/parent/children')}
+      <div className="row g-3">
+        {PARENT_TILES.map((t) => (
+          <div key={t.path} className="col-12 col-md-6">
+            <button
+              type="button"
+              className="card border-0 shadow-sm rounded-4 w-100 text-start"
+              style={{ cursor: 'pointer', transition: 'transform 0.15s ease' }}
+              onClick={() => navigate(t.path)}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+            >
+              <div className="card-body p-4 d-flex align-items-center gap-3">
+                <div
+                  className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width: 56, height: 56, background: t.accent, border: `1px solid ${t.accentBorder}`, fontSize: '1.5rem' }}
                 >
-                  Открыть
-                </button>
+                  {t.icon}
+                </div>
+                <div>
+                  <div className="fw-semibold" style={{ fontSize: '1.05rem' }}>{t.title}</div>
+                  <div className="text-muted small">{t.desc}</div>
+                </div>
+                <svg className="ms-auto flex-shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
               </div>
-            </div>
+            </button>
           </div>
-
-          <div className="col-md-4">
-            <div className="card">
-              <div className="card-body">
-                <h5 className="card-title">Посещаемость</h5>
-                <p className="card-text">Проверка записей посещаемости</p>
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => navigate('/parent/attendance')}
-                >
-                  Открыть
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="col-md-4">
-            <div className="card">
-              <div className="card-body">
-                <h5 className="card-title">Оплата</h5>
-                <p className="card-text">Просмотр баланса занятий и платежей</p>
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => navigate('/parent/billing')}
-                >
-                  Открыть
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="col-md-4">
-            <div className="card">
-              <div className="card-body">
-                <h5 className="card-title">Лента проектов</h5>
-                <p className="card-text">Лучшие работы учеников</p>
-                <button className="btn btn-primary btn-sm" onClick={() => navigate('/projects')}>
-                  Открыть
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
     </AppLayout>
   );
 };
 
 /**
- * Student Dashboard
+ * Student Dashboard — теперь перенаправляет на новую дружелюбную главную ученика.
  */
-const StudentDashboard = () => {
-  const { user } = useAuth();
-
-  return (
-    <AppLayout title="KiberOne — Ученик" navItems={studentNavItems}>
-      <div>
-        <h1>Панель ученика</h1>
-        <p>Добро пожаловать, {user?.first_name || 'Ученик'}!</p>
-
-        <div className="card mt-3">
-          <div className="card-header">
-            <strong>📅 Расписание</strong>
-          </div>
-          <div className="card-body">
-            <StudentSchedule />
-          </div>
-        </div>
-      </div>
-    </AppLayout>
-  );
-};
+const StudentDashboard = () => <Navigate to="/student" replace />;
 
 /**
  * Default Dashboard - for users with no specific role

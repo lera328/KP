@@ -61,9 +61,20 @@ export const StudentBalance = () => {
                   <div>Загрузка...</div>
                 ) : (
                   <>
-                    <div className="display-6 fw-bold mb-2">{Number(balance?.remaining_lessons ?? 0)}</div>
-                    <div className="text-muted">Осталось занятий</div>
-                    {subscription && (
+                    {balance?.valid_from && balance?.valid_until ? (
+                      <>
+                        <div className="display-6 fw-bold mb-2 text-success">Активен</div>
+                        <div className="text-muted">
+                          Абонемент с {new Date(balance.valid_from).toLocaleDateString('ru-RU')} по {new Date(balance.valid_until).toLocaleDateString('ru-RU')}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="display-6 fw-bold mb-2">{Number(balance?.remaining_lessons ?? 0)}</div>
+                        <div className="text-muted">Осталось занятий</div>
+                      </>
+                    )}
+                    {subscription && subscription.total_lessons > 0 && (
                       <div className="mt-3 small text-muted">
                         Всего по пакету занятий: {subscription.total_lessons}
                       </div>

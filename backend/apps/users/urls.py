@@ -2,6 +2,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .views import (
+    admin_delete_project_view,
     admin_reset_user_password_view,
     change_password_view,
     churn_risk_view,
@@ -19,7 +20,9 @@ from .views import (
     projects_feed_view,
     session_login_view,
     student_portfolio_pdf_view,
+    student_portfolio_view,
     student_projects_view,
+    teacher_student_detail_view,
     update_user_view,
 )
 
@@ -40,9 +43,12 @@ urlpatterns = [
     path("parent/attendance/", parent_attendance_view, name="parent-attendance"),
     path("parent/billing/", parent_billing_view, name="parent-billing"),
     path("student/projects/", student_projects_view, name="student-projects"),
+    path("student/portfolio/", student_portfolio_view, name="student-portfolio"),
     path("student/portfolio/pdf/", student_portfolio_pdf_view, name="student-portfolio-pdf"),
+    path("teacher/students/<int:student_id>/", teacher_student_detail_view, name="teacher-student-detail"),
     path("projects/feed/", projects_feed_view, name="projects-feed"),
     path("projects/<int:project_id>/like/", project_like_view, name="projects-like"),
+    path("projects/<int:project_id>/", admin_delete_project_view, name="admin-delete-project"),
     path("token/", TokenObtainPairView.as_view(), name="token-obtain-pair"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
 ]

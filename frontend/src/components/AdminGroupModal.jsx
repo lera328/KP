@@ -419,7 +419,7 @@ export const AdminGroupModal = ({
                   </div>
 
                   <div className="mt-3">
-                    <button type="submit" className="btn btn-primary" disabled={savingInfo}>
+                    <button type="submit" className="btn btn-dark rounded-pill px-4" disabled={savingInfo}>
                       {savingInfo ? 'Сохраняем...' : 'Сохранить параметры'}
                     </button>
                   </div>
@@ -470,7 +470,7 @@ export const AdminGroupModal = ({
                     <div className="col-md-2 d-flex align-items-end">
                       <button
                         type="submit"
-                        className="btn btn-primary w-100"
+                        className="btn btn-dark rounded-pill w-100"
                         disabled={savingSchedule}
                       >
                         {savingSchedule ? '...' : 'Прописать'}
@@ -519,7 +519,7 @@ export const AdminGroupModal = ({
                         <div className="col-md-2 d-flex align-items-end">
                           <button
                             type="submit"
-                            className="btn btn-primary w-100"
+                            className="btn btn-dark rounded-pill w-100"
                             disabled={savingExtra}
                           >
                             {savingExtra ? '...' : 'Добавить'}
@@ -580,14 +580,14 @@ export const AdminGroupModal = ({
                                   {isEditing ? (
                                     <div className="d-flex gap-2 justify-content-end">
                                       <button
-                                        className="btn btn-success btn-sm"
+                                        className="btn btn-dark rounded-pill btn-sm"
                                         onClick={() => handleSaveLesson(lesson)}
                                         disabled={savingLessonEdit}
                                       >
                                         {savingLessonEdit ? '...' : 'Сохранить'}
                                       </button>
                                       <button
-                                        className="btn btn-outline-secondary btn-sm"
+                                        className="btn btn-light border rounded-pill btn-sm"
                                         onClick={cancelEditLesson}
                                         disabled={savingLessonEdit}
                                       >
@@ -597,7 +597,7 @@ export const AdminGroupModal = ({
                                   ) : (
                                     <div className="d-flex gap-2 justify-content-end">
                                       <button
-                                        className="btn btn-outline-primary btn-sm"
+                                        className="btn btn-dark rounded-pill btn-sm"
                                         onClick={() => startEditLesson(lesson)}
                                       >
                                         Сменить педагога

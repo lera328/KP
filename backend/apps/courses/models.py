@@ -64,3 +64,23 @@ class GroupTeacher(models.Model):
 
     class Meta:
         unique_together = ("group", "user")
+
+
+class GroupComment(models.Model):
+    """Заметка/комментарий преподавателя или администратора о группе."""
+
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="comments")
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="group_comments",
+    )
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):  # pragma: no cover - debug helper
+        return f"GroupComment(group={self.group_id}, author={self.author_id})"

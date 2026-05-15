@@ -104,7 +104,10 @@ class APIService {
 
     if (response.status === 401) {
       this.clearToken();
-      window.location.href = '/login';
+      if (!endpoint.includes('session-login')) {
+        window.location.href = '/login';
+        return null;
+      }
     }
 
     if (!response.ok) {
@@ -135,6 +138,7 @@ class APIService {
     if (response.status === 401) {
       this.clearToken();
       window.location.href = '/login';
+      return null;
     }
 
     if (!response.ok) {
@@ -271,6 +275,11 @@ class APIService {
     return this.request('/auth/student/projects/');
   }
 
+  async getPortfolio({ studentId } = {}) {
+    const query = studentId ? `?student_id=${encodeURIComponent(studentId)}` : '';
+    return this.request(`/auth/student/portfolio/${query}`);
+  }
+
   async downloadPortfolioPdf({ studentId } = {}) {
     const query = studentId ? `?student_id=${encodeURIComponent(studentId)}` : '';
     const response = await fetch(`${this.baseURL}/auth/student/portfolio/pdf/${query}`, {
@@ -302,6 +311,9 @@ class APIService {
     formData.append('project_url', payload.project_url || '');
     (payload.photos || []).forEach((file) => {
       formData.append('photos', file);
+    });
+    (payload.files || []).forEach((file) => {
+      formData.append('files', file);
     });
 
     return this.requestFormData('/auth/student/projects/', formData, {
@@ -390,9 +402,43 @@ class APIService {
     });
   }
 
+  async getGroup(groupId) {
+    return this.request(`/groups/${groupId}/`);
+  }
+
+  async getGroupComments(groupId) {
+    return this.request(`/groups/${groupId}/comments/`);
+  }
+
+  async addGroupComment(groupId, text) {
+    return this.request(`/groups/${groupId}/comments/`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+  }
+
+  async deleteGroupComment(groupId, commentId) {
+    return this.request(`/groups/${groupId}/comments/${commentId}/`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getTeacherStudentDetail(studentId, params = {}) {
+    const query = new URLSearchParams();
+    if (params.days) query.set('days', params.days);
+    const qs = query.toString();
+    return this.request(
+      `/auth/teacher/students/${studentId}/${qs ? `?${qs}` : ''}`,
+    );
+  }
+
   // Attendance endpoints
   async getLessons() {
     return this.request('/lessons/');
+  }
+
+  async getLesson(lessonId) {
+    return this.request(`/lessons/${lessonId}/`);
   }
 
   async getMyAttendance() {
@@ -477,8 +523,13 @@ class APIService {
     });
   }
 
-  async getTeacherSalary() {
-    return this.request('/teacher/salary/');
+  async getTeacherSalary(params = {}) {
+    const query = new URLSearchParams();
+    if (params.from) query.set('from', params.from);
+    if (params.to) query.set('to', params.to);
+    if (params.teacher_id) query.set('teacher_id', params.teacher_id);
+    const qs = query.toString();
+    return this.request(`/teacher/salary/${qs ? `?${qs}` : ''}`);
   }
 
   async markAttendance(attendanceData) {
@@ -515,6 +566,19 @@ class APIService {
     return this.request(`/makeups/${makeupId}/approve/`, {
       method: 'PATCH',
       body: JSON.stringify(approvalData),
+    });
+  }
+
+  async rejectMakeup(makeupId) {
+    return this.request(`/makeups/${makeupId}/reject/`, {
+      method: 'DELETE',
+    });
+  }
+
+  async adminAssignMakeup(data) {
+    return this.request('/makeups/admin/assign/', {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
   }
 
@@ -564,6 +628,13 @@ class APIService {
     return this.request('/finance/payments/plans/');
   }
 
+  async updatePaymentPlans(plans) {
+    return this.request('/finance/payments/plans/update/', {
+      method: 'PUT',
+      body: JSON.stringify(plans),
+    });
+  }
+
   async initiateParentPayment(payload) {
     return this.request('/finance/payments/parent/initiate/', {
       method: 'POST',
@@ -575,6 +646,12 @@ class APIService {
     return this.request('/notifications/payment-reminders/', {
       method: 'POST',
       body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteProject(projectId) {
+    return this.request(`/auth/projects/${projectId}/`, {
+      method: 'DELETE',
     });
   }
 

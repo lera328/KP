@@ -14,7 +14,7 @@ from .serializers import (
     SubscriptionListSerializer,
     SubscriptionSerializer,
 )
-from .services import AUTO_PROCESS_DELAY_SECONDS, PAYMENT_PLANS, process_pending_payment_intents
+from .services import AUTO_PROCESS_DELAY_SECONDS, get_payment_plans, save_payment_plans, process_pending_payment_intents
 
 
 class SubscriptionViewSet(viewsets.ModelViewSet):
@@ -130,35 +130,74 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def balance(self, request):
-        """Get remaining lesson balance for authenticated user"""
+        """Get remaining lesson balance or period info for authenticated user"""
         process_pending_payment_intents()
         user = request.user
         subscription = Subscription.objects.filter(student=user, is_active=True).first()
-        
+
         if not subscription:
             return Response(
-                {"remaining_lessons": 0, "message": "No active subscription."},
+                {"remaining_lessons": 0, "valid_from": None, "valid_until": None, "message": "No active subscription."},
                 status=status.HTTP_200_OK
             )
-        
+
         return Response({
             "remaining_lessons": subscription.remaining_lessons,
             "subscription_id": subscription.id,
             "total_lessons": subscription.total_lessons,
+            "valid_from": subscription.valid_from,
+            "valid_until": subscription.valid_until,
         })
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='plans')
     def plans(self, request):
+        plans = get_payment_plans()
         payload = [
             {
                 "code": code,
                 "label": data["label"],
                 "amount": str(data["amount"]),
                 "lessons": data["lessons"],
+                "duration_months": data.get("duration_months", 0),
             }
-            for code, data in PAYMENT_PLANS.items()
+            for code, data in plans.items()
         ]
         return Response(payload)
+
+    @action(detail=False, methods=['put'], permission_classes=[IsAuthenticated], url_path='plans/update')
+    def update_plans(self, request):
+        user = request.user
+        if not (user.roles.filter(code=Role.Code.ADMIN).exists() or user.is_superuser):
+            raise PermissionDenied("Только администратор может изменять тарифы")
+
+        plans_data = request.data
+        if not isinstance(plans_data, list):
+            return Response({"error": "Ожидается список тарифов"}, status=status.HTTP_400_BAD_REQUEST)
+
+        new_plans = {}
+        for item in plans_data:
+            code = item.get("code")
+            amount = item.get("amount")
+            label = item.get("label", code)
+            duration_months = item.get("duration_months", 1)
+            lessons = item.get("lessons", 0)
+            if not code or amount is None:
+                return Response(
+                    {"error": "Каждый тариф должен содержать code и amount"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                new_plans[code] = {
+                    "amount": str(amount),
+                    "lessons": int(lessons),
+                    "duration_months": int(duration_months),
+                    "label": str(label),
+                }
+            except (ValueError, TypeError) as e:
+                return Response({"error": f"Ошибка в тарифе {code}: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        save_payment_plans(new_plans)
+        return Response({"detail": "Тарифы обновлены"})
 
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='parent/initiate')
     def parent_initiate(self, request):

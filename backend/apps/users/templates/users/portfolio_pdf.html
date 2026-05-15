@@ -174,6 +174,10 @@
         <div class="value">{{ stats.likes_total }}</div>
         <div class="label">Получено лайков</div>
       </div>
+      <div class="stat">
+        <div class="value">{% if stats.grades_average %}{{ stats.grades_average }}{% else %}—{% endif %}</div>
+        <div class="label">Средняя оценка</div>
+      </div>
     </div>
     <p>
       <strong>Логин:</strong> {{ student_username }}<br />
@@ -220,9 +224,62 @@
           {% endfor %}
         </div>
         {% endif %}
+        {% if project.files %}
+        <div class="files" style="margin-top:8pt;font-size:10pt;">
+          <strong>Прикреплённые файлы:</strong>
+          <ul style="margin:4pt 0 0 14pt;padding:0;">
+            {% for f in project.files %}
+              <li><a href="{{ f.url }}" style="color:#1f3a93;">{{ f.name }}</a></li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
       </div>
     {% endfor %}
   </section>
+
+  {% if lessons %}
+  <section class="section">
+    <h2>Пройденные занятия и оценки</h2>
+    {% if grades_summary.count %}
+    <p style="font-size: 10pt; color: #555; margin-bottom: 8pt;">
+      Получено оценок: <strong>{{ grades_summary.count }}</strong>.
+      Средняя: <strong>{{ grades_summary.average }}</strong>,
+      от {{ grades_summary.min }} до {{ grades_summary.max }}.
+    </p>
+    {% else %}
+    <p style="font-size: 10pt; color: #888; margin-bottom: 8pt;">Оценок пока нет — впереди ещё много открытий!</p>
+    {% endif %}
+    <table class="groups-table">
+      <thead>
+        <tr>
+          <th style="width: 22%;">Дата</th>
+          <th>Тема</th>
+          <th style="width: 14%;">Оценка</th>
+          <th style="width: 30%;">Комментарий</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lesson in lessons %}
+        <tr>
+          <td>
+            {{ lesson.starts_at|date:"d.m.Y H:i" }}
+            {% if lesson.is_makeup %}<br /><span style="color:#1f3a93;font-size:8pt;">Отработка</span>{% endif %}
+          </td>
+          <td>
+            {{ lesson.topic }}
+            {% if lesson.group_name %}<br /><span style="color:#888;font-size:9pt;">{{ lesson.group_name }}</span>{% endif %}
+          </td>
+          <td>
+            {% if lesson.grade %}<strong>{{ lesson.grade }}</strong>{% else %}—{% endif %}
+          </td>
+          <td>{{ lesson.teacher_comment|default:"" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
 
 </body>
 </html>

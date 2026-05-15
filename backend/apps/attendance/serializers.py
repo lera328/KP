@@ -22,6 +22,7 @@ class LessonSerializer(serializers.ModelSerializer):
     group_name = serializers.SerializerMethodField()
     makeup_topics = serializers.SerializerMethodField()
     makeup_booked = serializers.SerializerMethodField()
+    makeup_students = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
@@ -43,6 +44,7 @@ class LessonSerializer(serializers.ModelSerializer):
             "attendance_records",
             "makeup_topics",
             "makeup_booked",
+            "makeup_students",
         ]
 
     def get_attendance_records(self, obj):
@@ -104,6 +106,56 @@ class LessonSerializer(serializers.ModelSerializer):
                 seen.add(title)
                 titles.append(title)
         return "; ".join(titles)
+
+    def get_makeup_students(self, obj):
+        """Список детей, записанных на слот отработки (для преподавателя)."""
+        if not obj.is_makeup_slot:
+            return []
+        active_statuses = [
+            MakeUpRequest.Status.REQUESTED,
+            MakeUpRequest.Status.COMPLETED,
+            MakeUpRequest.Status.APPROVED,
+        ]
+        requests = (
+            MakeUpRequest.objects.filter(
+                makeup_lesson=obj,
+                status__in=active_statuses,
+            )
+            .select_related(
+                "student",
+                "absence_record",
+                "absence_record__lesson",
+                "absence_record__lesson__group",
+                "absence_record__lesson__topic",
+            )
+        )
+        items = []
+        for req in requests:
+            student = req.student
+            full_name = (student.get_full_name().strip() or student.username) if student else "—"
+            absence = req.absence_record
+            absence_lesson = absence.lesson if absence else None
+            absence_group = (
+                absence_lesson.group.name
+                if absence_lesson and absence_lesson.group_id
+                else ""
+            )
+            topic = ""
+            if absence_lesson:
+                topic = (absence_lesson.conducted_topic or "").strip()
+                if not topic and absence_lesson.topic_id:
+                    topic = absence_lesson.topic.title
+            items.append(
+                {
+                    "student_id": student.id if student else None,
+                    "student_name": full_name,
+                    "status": req.status,
+                    "absence_group": absence_group,
+                    "absence_topic": topic,
+                    "absence_starts_at": absence_lesson.starts_at if absence_lesson else None,
+                }
+            )
+        return items
 
 
 class GroupScheduleSetupSerializer(serializers.Serializer):
@@ -331,19 +383,21 @@ class MakeUpRequestCreateSerializer(serializers.Serializer):
         if absence.status != AttendanceRecord.Status.ABSENT:
             raise serializers.ValidationError("Отработка создается только на основании пропуска")
 
-        # Правило: пропущенный урок должен входить в три последних прошедших занятия ученика
-        last_lesson_ids = list(
-            AttendanceRecord.objects.filter(
-                student_id=absence.student_id,
-                lesson__starts_at__lte=timezone.now(),
+        # Правило «3 последних занятия» не применяется для администратора
+        skip_recency = self.context.get("skip_recency_check", False)
+        if not skip_recency:
+            last_lesson_ids = list(
+                AttendanceRecord.objects.filter(
+                    student_id=absence.student_id,
+                    lesson__starts_at__lte=timezone.now(),
+                )
+                .order_by("-lesson__starts_at")
+                .values_list("lesson_id", flat=True)[:3]
             )
-            .order_by("-lesson__starts_at")
-            .values_list("lesson_id", flat=True)[:3]
-        )
-        if absence.lesson_id not in last_lesson_ids:
-            raise serializers.ValidationError(
-                "Запись на отработку доступна только для трёх последних занятий ученика."
-            )
+            if absence.lesson_id not in last_lesson_ids:
+                raise serializers.ValidationError(
+                    "Запись на отработку доступна только для трёх последних занятий ученика."
+                )
 
         if not makeup_lesson.is_makeup_slot:
             raise serializers.ValidationError("Выбранный урок не является слотом отработки")

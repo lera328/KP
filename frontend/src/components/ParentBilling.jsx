@@ -12,14 +12,24 @@ const PLAN_LABELS = {
 
 const formatDateTime = (value) => {
   if (!value) return '-';
-  return new Date(value).toLocaleString('ru-RU');
+  return new Date(value).toLocaleString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+};
+
+const formatDateShort = (value) => {
+  if (!value) return '-';
+  return new Date(value).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const INTENT_STATUS = {
+  pending: { label: 'Ожидает', color: '#d97706', bg: '#fef3c7' },
+  paid: { label: 'Оплачен', color: '#16a34a', bg: '#ecfdf5' },
+  error: { label: 'Ошибка', color: '#dc2626', bg: '#fef2f2' },
 };
 
 export const ParentBilling = () => {
   const [billingData, setBillingData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const hasPendingIntent = useMemo(
     () =>
@@ -47,175 +57,152 @@ export const ParentBilling = () => {
   }, []);
 
   useEffect(() => {
-    if (!hasPendingIntent) {
-      return undefined;
-    }
-
-    const timer = setInterval(() => {
-      loadBilling();
-    }, 4000);
-
+    if (!hasPendingIntent) return undefined;
+    const timer = setInterval(() => { loadBilling(); }, 4000);
     return () => clearInterval(timer);
   }, [hasPendingIntent]);
 
-
   return (
-    <AppLayout title="KiberOne — Родитель" navItems={parentNavItems}>
-      <div>
-        {error && <div className="alert alert-danger">{error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
+    <AppLayout title="KiberOne — Оплата" navItems={parentNavItems} kidMode>
+      <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <h1 className="fw-semibold mb-0" style={{ fontSize: '1.75rem' }}>Оплата</h1>
+        <button type="button" className="btn btn-light border rounded-pill px-3 ms-auto" onClick={loadBilling} disabled={loading}>
+          Обновить
+        </button>
+      </div>
 
-        <div className="card">
-          <div className="card-header d-flex justify-content-between align-items-center">
-            <strong>Оплата по детям</strong>
-            <button className="btn btn-outline-secondary btn-sm" onClick={loadBilling} disabled={loading}>
-              Обновить
-            </button>
-          </div>
-          <div className="card-body">
-            {loading ? (
-              <div>Загрузка...</div>
-            ) : billingData.length === 0 ? (
-              <div className="text-muted">Данные по оплатам пока отсутствуют.</div>
-            ) : (
-              <div className="row g-3">
-                {billingData.map((item) => {
-                  const remainingLessons = Number(item.subscription?.remaining_lessons ?? 0);
-                  const isLowBalance = Boolean(item.subscription?.is_active) && remainingLessons < LOW_BALANCE_THRESHOLD;
-                  const latestIntent = Array.isArray(item.payment_intents) ? item.payment_intents[0] : null;
+      {error && <div className="alert alert-danger rounded-3">{error}</div>}
 
-                  return (
-                    <div className="col-12" key={item.student_id}>
-                      <div className="card">
-                        <div className="card-header d-flex justify-content-between align-items-center">
-                          <strong>{item.student_name}</strong>
-                          <span className={`badge ${item.subscription?.is_active ? (isLowBalance ? 'text-bg-warning' : 'text-bg-success') : 'text-bg-secondary'}`}>
-                            {item.subscription?.is_active
-                              ? isLowBalance
-                                ? 'Низкий остаток'
-                                : 'Активный пакет занятий'
-                              : 'Нет активного пакета занятий'}
-                          </span>
-                        </div>
-                        <div className="card-body">
-                          {item.subscription ? (
-                            <div className="mb-3">
-                              <div>Всего занятий: {item.subscription.total_lessons}</div>
-                              <div>Остаток: {item.subscription.remaining_lessons}</div>
-                              {isLowBalance && (
-                                <div className="alert alert-warning py-2 mt-2 mb-0">
-                                  Осталось мало занятий. Рекомендуем пополнить пакет занятий.
-                                </div>
-                              )}
+      {loading ? (
+        <div className="d-flex flex-column gap-3">
+          {[1, 2].map((i) => (
+            <div key={i} className="kid-skeleton" style={{ height: 180, borderRadius: 16 }} />
+          ))}
+        </div>
+      ) : billingData.length === 0 ? (
+        <div className="card border-0 shadow-sm rounded-4">
+          <div className="card-body text-center py-5 text-muted">Данные по оплатам пока отсутствуют.</div>
+        </div>
+      ) : (
+        <div className="d-flex flex-column gap-3">
+          {billingData.map((item) => {
+            const sub = item.subscription;
+            const isPeriod = sub?.valid_from && sub?.valid_until;
+            const remainingLessons = Number(sub?.remaining_lessons ?? 0);
+            const isLowBalance = !isPeriod && Boolean(sub?.is_active) && remainingLessons < LOW_BALANCE_THRESHOLD;
+            const daysLeft = isPeriod && sub?.is_active ? Math.ceil((new Date(sub.valid_until) - new Date()) / 86400000) : null;
+            const isPeriodExpiring = daysLeft !== null && daysLeft <= 7 && daysLeft >= 0;
+            const needsAttention = isLowBalance || isPeriodExpiring;
+
+            const statusColor = sub?.is_active ? (needsAttention ? '#d97706' : '#16a34a') : '#6b7280';
+            const statusBg = sub?.is_active ? (needsAttention ? '#fef3c7' : '#ecfdf5') : '#f3f4f6';
+            const statusLabel = sub?.is_active ? (isLowBalance ? 'Мало занятий' : isPeriodExpiring ? 'Скоро истекает' : 'Активен') : 'Нет абонемента';
+
+            const payments = Array.isArray(item.payments) ? item.payments : [];
+            const intents = Array.isArray(item.payment_intents) ? item.payment_intents : [];
+
+            return (
+              <div key={item.student_id} className="card border-0 shadow-sm rounded-4" style={needsAttention ? { borderLeft: '4px solid #f59e0b' } : {}}>
+                <div className="card-body p-4">
+                  {/* Шапка */}
+                  <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+                    <div className="fw-semibold" style={{ fontSize: '1.15rem' }}>{item.student_name}</div>
+                    <span className="badge rounded-pill ms-auto" style={{ background: statusBg, color: statusColor, fontWeight: 600 }}>{statusLabel}</span>
+                  </div>
+
+                  {/* Баланс */}
+                  {sub ? (
+                    <div className="rounded-3 p-3 mb-3" style={{ background: '#f8f9fb' }}>
+                      {isPeriod ? (
+                        <div>
+                          <div className="d-flex flex-wrap gap-3">
+                            <div>
+                              <div className="text-muted small">Период</div>
+                              <div className="fw-semibold">{formatDateShort(sub.valid_from)} — {formatDateShort(sub.valid_until)}</div>
                             </div>
-                          ) : (
-                            <div className="text-muted mb-3">Активный пакет занятий не найден.</div>
-                          )}
-
-                          <div className="card mb-3">
-                            <div className="card-header">
-                              <strong>Оплата</strong>
-                            </div>
-                            <div className="card-body">
-                              <div className="alert alert-info py-2 mb-0">
-                                Оплата оформляется через администратора. При необходимости обратитесь в школу.
+                            {daysLeft !== null && (
+                              <div>
+                                <div className="text-muted small">Осталось дней</div>
+                                <div className="fw-semibold" style={{ color: isPeriodExpiring ? '#d97706' : '#111827' }}>{Math.max(0, daysLeft)}</div>
                               </div>
-
-                              {latestIntent ? (
-                                <div className="mt-3 small">
-                                  <strong>Последний платеж:</strong>{' '}
-                                  {PLAN_LABELS[latestIntent.plan] || latestIntent.plan}, статус{' '}
-                                  {latestIntent.status === 'pending'
-                                    ? 'ожидает'
-                                    : latestIntent.status === 'paid'
-                                      ? 'оплачен'
-                                      : 'ошибка'}
-                                  , создан {formatDateTime(latestIntent.created_at)}
-                                  {latestIntent.processed_at ? `, обработан ${formatDateTime(latestIntent.processed_at)}` : ''}
-                                </div>
-                              ) : null}
+                            )}
+                          </div>
+                          {isPeriodExpiring && (
+                            <div className="mt-2 rounded-3 p-2 small fw-semibold" style={{ background: '#fffbeb', color: '#b45309' }}>
+                              Абонемент скоро истекает. Обратитесь в школу для продления.
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="d-flex flex-wrap gap-3">
+                            <div>
+                              <div className="text-muted small">Всего занятий</div>
+                              <div className="fw-semibold">{sub.total_lessons}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted small">Осталось</div>
+                              <div className="fw-semibold" style={{ color: isLowBalance ? '#dc2626' : '#111827', fontSize: '1.1rem' }}>{sub.remaining_lessons}</div>
                             </div>
                           </div>
-
-                          <div className="table-responsive mb-3">
-                            <table className="table table-sm table-bordered mb-0">
-                              <thead>
-                                <tr>
-                                  <th>ID</th>
-                                  <th>Сумма</th>
-                                  <th>Дата</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {Array.isArray(item.payments) && item.payments.length > 0 ? (
-                                  item.payments.map((payment) => (
-                                    <tr key={payment.id}>
-                                      <td>{payment.id}</td>
-                                      <td>{payment.amount}</td>
-                                      <td>{formatDateTime(payment.paid_at)}</td>
-                                    </tr>
-                                  ))
-                                ) : (
-                                  <tr>
-                                    <td colSpan={3} className="text-muted text-center">
-                                      Платежей пока нет.
-                                    </td>
-                                  </tr>
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
-
-                          <div className="table-responsive">
-                            <table className="table table-sm table-bordered mb-0">
-                              <thead>
-                                <tr>
-                                  <th>ID</th>
-                                  <th>Тариф</th>
-                                  <th>Занятий</th>
-                                  <th>Сумма</th>
-                                  <th>Статус</th>
-                                  <th>Создан</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {Array.isArray(item.payment_intents) && item.payment_intents.length > 0 ? (
-                                  item.payment_intents.map((intent) => (
-                                    <tr key={intent.id}>
-                                      <td>{intent.id}</td>
-                                      <td>{PLAN_LABELS[intent.plan] || intent.plan}</td>
-                                      <td>{intent.lessons}</td>
-                                      <td>{intent.amount}</td>
-                                      <td>
-                                        {intent.status === 'pending'
-                                          ? 'Ожидает'
-                                          : intent.status === 'paid'
-                                            ? 'Оплачен'
-                                            : 'Ошибка'}
-                                      </td>
-                                      <td>{formatDateTime(intent.created_at)}</td>
-                                    </tr>
-                                  ))
-                                ) : (
-                                  <tr>
-                                    <td colSpan={6} className="text-muted text-center">
-                                      Инициированных платежей пока нет.
-                                    </td>
-                                  </tr>
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
+                          {isLowBalance && (
+                            <div className="mt-2 rounded-3 p-2 small fw-semibold" style={{ background: '#fef2f2', color: '#dc2626' }}>
+                              Мало занятий. Обратитесь в школу для пополнения.
+                            </div>
+                          )}
                         </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-3 p-3 mb-3 text-muted small" style={{ background: '#f8f9fb' }}>
+                      Активный абонемент не найден.
+                    </div>
+                  )}
+
+                  {/* Инфо */}
+                  <div className="rounded-3 p-3 mb-3 small" style={{ background: '#eff6ff', color: '#1d4ed8' }}>
+                    Оплата оформляется через администратора. При необходимости обратитесь в школу.
+                  </div>
+
+                  {/* Платежи */}
+                  {payments.length > 0 && (
+                    <div className="mb-3">
+                      <div className="fw-semibold small mb-2">Платежи</div>
+                      <div className="d-flex flex-column gap-1">
+                        {payments.map((p) => (
+                          <div key={p.id} className="d-flex justify-content-between align-items-center rounded-3 p-2" style={{ background: '#f8f9fb' }}>
+                            <span className="small">{formatDateTime(p.paid_at)}</span>
+                            <span className="fw-semibold small">{p.amount} ₸</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  );
-                })}
+                  )}
+
+                  {/* Счета */}
+                  {intents.length > 0 && (
+                    <div>
+                      <div className="fw-semibold small mb-2">История счетов</div>
+                      <div className="d-flex flex-column gap-1">
+                        {intents.map((intent) => {
+                          const st = INTENT_STATUS[intent.status] || INTENT_STATUS.error;
+                          return (
+                            <div key={intent.id} className="d-flex flex-wrap align-items-center gap-2 rounded-3 p-2" style={{ background: '#f8f9fb' }}>
+                              <span className="small flex-grow-1">{PLAN_LABELS[intent.plan] || intent.plan} · {intent.lessons} зан. · {intent.amount} ₸</span>
+                              <span className="badge rounded-pill" style={{ background: st.bg, color: st.color, fontWeight: 500 }}>{st.label}</span>
+                              <span className="text-muted small">{formatDateTime(intent.created_at)}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
+            );
+          })}
         </div>
-      </div>
+      )}
     </AppLayout>
   );
 };
