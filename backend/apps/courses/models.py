@@ -3,7 +3,7 @@ from django.db import models
 
 
 class Location(models.Model):
-    """Точка KiberOne (например, Куйбышева, Мира, Карла Маркса)."""
+    """Точка КиберШкола (например, Куйбышева, Мира, Карла Маркса)."""
     name = models.CharField(max_length=128, unique=True)
     address = models.CharField(max_length=255, blank=True)
     is_active = models.BooleanField(default=True)

@@ -152,7 +152,7 @@ export const TeacherHome = () => {
   };
 
   return (
-    <AppLayout title="KiberOne" navItems={teacherNavItems} kidMode>
+    <AppLayout title="КиберШкола" navItems={teacherNavItems} kidMode>
       {/* Приветствие */}
       <div className="mb-4">
         <div className="text-muted small">

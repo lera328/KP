@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { IconSearch, IconCheck } from './KidIcons';
 
 const STATUS_OPTIONS = [
@@ -31,6 +32,8 @@ const formatDateTime = (v) =>
  */
 export const ConductLessonModal = ({ lesson, group, onClose, onSaved }) => {
   const navigate = useNavigate();
+  const { hasRole } = useAuth();
+  const prefix = hasRole('admin') ? '/admin' : '/teacher';
   const isMakeup = Boolean(lesson?.is_makeup_slot);
 
   // Для слотов отработок берём учеников из makeup_students; для обычных — из group.students.
@@ -165,7 +168,7 @@ export const ConductLessonModal = ({ lesson, group, onClose, onSaved }) => {
                   className="btn btn-sm btn-light border rounded-pill px-3"
                   onClick={() => {
                     onClose && onClose();
-                    navigate(`/teacher/groups/${lesson.group}`);
+                    navigate(`${prefix}/groups/${lesson.group}`);
                   }}
                   disabled={saving}
                   title="Открыть страницу группы"
@@ -298,7 +301,7 @@ export const ConductLessonModal = ({ lesson, group, onClose, onSaved }) => {
                       onChange={(field, value) => updateRow(row.studentId, field, value)}
                       onOpenStudent={() => {
                         onClose && onClose();
-                        navigate(`/teacher/students/${row.studentId}`);
+                        navigate(`${prefix}/students/${row.studentId}`);
                       }}
                     />
                   ))}

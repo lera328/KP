@@ -37,7 +37,7 @@ export const Portfolio = ({ mode = 'student' }) => {
 
   const navItems = mode === 'parent' ? parentNavItems : studentNavItems;
   const layoutTitle =
-    mode === 'parent' ? 'KiberOne — Портфолио ребёнка' : 'KiberOne — Моё портфолио';
+    mode === 'parent' ? 'КиберШкола — Портфолио ребёнка' : 'КиберШкола — Моё портфолио';
 
   const load = async () => {
     setLoading(true);

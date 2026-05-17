@@ -100,7 +100,7 @@ export const StudentProjectsHub = () => {
   };
 
   return (
-    <AppLayout title="KiberOne" navItems={studentNavItems} kidMode>
+    <AppLayout title="КиберШкола" navItems={studentNavItems} kidMode>
       <div className="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
         <h1 className="fw-semibold mb-0" style={{ fontSize: '2rem' }}>
           Проекты

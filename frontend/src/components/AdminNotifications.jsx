@@ -69,7 +69,7 @@ export const AdminNotifications = () => {
   };
 
   return (
-    <AdminLayout title="KiberOne — Уведомления">
+    <AdminLayout title="КиберШкола — Уведомления">
       {error && <div className="alert alert-danger rounded-3">{error}</div>}
       {success && <div className="alert alert-success rounded-3">{success}</div>}
 

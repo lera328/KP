@@ -92,7 +92,10 @@ export const StudentSchedulePage = () => {
         if (!l.starts_at) return false;
         const d = new Date(l.starts_at);
         if (d < weekStart || d > weekEnd) return false;
-        if (l.is_makeup_slot) return true;
+        if (l.is_makeup_slot) {
+          const students = Array.isArray(l.makeup_students) ? l.makeup_students : [];
+          return students.some((s) => s.status === 'approved');
+        }
         return groupIds.has(l.group);
       })
       .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
@@ -186,7 +189,7 @@ export const StudentSchedulePage = () => {
   };
 
   return (
-    <AppLayout title="KiberOne" navItems={studentNavItems} kidMode>
+    <AppLayout title="КиберШкола" navItems={studentNavItems} kidMode>
       <h1 className="fw-semibold mb-4" style={{ fontSize: '2rem' }}>
         Расписание
       </h1>

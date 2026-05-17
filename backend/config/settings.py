@@ -60,9 +60,9 @@ ASGI_APPLICATION = "config.asgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "kiberone"),
-        "USER": os.getenv("POSTGRES_USER", "kiberone_user"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "kiberone_pass"),
+        "NAME": os.getenv("POSTGRES_DB", "КиберШкола"),
+        "USER": os.getenv("POSTGRES_USER", "КиберШкола_user"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "КиберШкола_pass"),
         "HOST": os.getenv("POSTGRES_HOST", "db"),
         "PORT": os.getenv("POSTGRES_PORT", "5432"),
     }
@@ -113,7 +113,7 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "0") == "1"
 EMAIL_USE_TLS = (not EMAIL_USE_SSL) and os.getenv("EMAIL_USE_TLS", "1") == "1"
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "KiberOne <onboarding@resend.dev>")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "КиберШкола <onboarding@resend.dev>")
 
 # Базовый URL для писем со ссылками (frontend)
 PUBLIC_FRONTEND_URL = os.getenv("PUBLIC_FRONTEND_URL", "http://localhost:5173")

@@ -49,7 +49,7 @@ export const ParentChildren = () => {
   };
 
   return (
-    <AppLayout title="KiberOne — Дети" navItems={parentNavItems} kidMode>
+    <AppLayout title="КиберШкола — Дети" navItems={parentNavItems} kidMode>
       <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
         <h1 className="fw-semibold mb-0" style={{ fontSize: '1.75rem' }}>Мои дети</h1>
         <button

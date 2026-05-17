@@ -16,6 +16,17 @@ export const LoginForm = () => {
     setError('');
     setLoading(true);
 
+    if (!identifier.trim()) {
+      setError('Введите логин или адрес электронной почты.');
+      setLoading(false);
+      return;
+    }
+    if (!password) {
+      setError('Введите пароль.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const profile = await login(identifier, password);
       if (profile?.must_change_password) {
@@ -24,7 +35,20 @@ export const LoginForm = () => {
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.message || 'Не удалось войти. Попробуйте ещё раз.');
+      const msg = err.message || '';
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        setError('Не удалось подключиться к серверу. Проверьте интернет-соединение.');
+      } else if (err.status === 401) {
+        setError(msg || 'Неверный логин или пароль.');
+      } else if (err.status === 403) {
+        setError(msg || 'Доступ запрещён.');
+      } else if (err.status === 400) {
+        setError(msg || 'Проверьте правильность введённых данных.');
+      } else if (err.status >= 500) {
+        setError('Ошибка сервера. Попробуйте позже.');
+      } else {
+        setError(msg || 'Не удалось войти. Попробуйте ещё раз.');
+      }
     } finally {
       setLoading(false);
     }
@@ -36,14 +60,15 @@ export const LoginForm = () => {
         <div className="col-md-6">
           <div className="card shadow">
             <div className="card-body">
-              <h2 className="card-title text-center mb-4">KiberOne</h2>
+              <h2 className="card-title text-center mb-4">КиберШкола</h2>
               <p className="text-muted text-center mb-4">
                 Вход выполняется по учетной записи, созданной администратором.
               </p>
               
               {error && (
-                <div className="alert alert-danger" role="alert">
-                  {error}
+                <div className="alert alert-danger rounded-3 d-flex align-items-center gap-2" role="alert">
+                  <span style={{ fontSize: '1.2rem' }}>&#9888;</span>
+                  <span>{error}</span>
                 </div>
               )}
 

@@ -101,7 +101,7 @@ export default function AdminAnalytics() {
   );
 
   return (
-    <AdminLayout title="KiberOne — Аналитика">
+    <AdminLayout title="КиберШкола — Аналитика">
       {error && <div className="alert alert-danger rounded-3">{error}</div>}
 
       {/* Header */}

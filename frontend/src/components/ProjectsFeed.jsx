@@ -37,15 +37,16 @@ export const ProjectsFeed = () => {
     setLoading(true);
     setError('');
     try {
-      const promises = [api.getProjectsFeed()];
-      if (isParent && childrenIds === null) {
-        promises.push(api.getParentChildren());
-      }
-      const [feedData, childrenData] = await Promise.all(promises);
+      const feedData = await api.getProjectsFeed();
       setTopProject(feedData?.top_project || null);
       setProjects(Array.isArray(feedData?.projects) ? feedData.projects : []);
-      if (childrenData) {
-        setChildrenIds(new Set((Array.isArray(childrenData) ? childrenData : []).map((c) => c.id)));
+      if (isParent && childrenIds === null) {
+        try {
+          const childrenData = await api.getParentChildren();
+          setChildrenIds(new Set((Array.isArray(childrenData) ? childrenData : []).map((c) => c.id)));
+        } catch (_) {
+          setChildrenIds(new Set());
+        }
       }
     } catch (loadError) {
       setError(loadError.message || 'Не удалось загрузить ленту проектов.');
@@ -104,7 +105,11 @@ export const ProjectsFeed = () => {
     });
   }, [projects, topProject, filter, isStudent, isParent, user?.id, childrenIds]);
 
-  const showTopProject = filter === FILTER_ALL && topProject;
+  const isTopMine = topProject && (
+    (isStudent && topProject.student_id === user?.id) ||
+    (isParent && childrenIds && childrenIds.has(topProject.student_id))
+  );
+  const showTopProject = topProject && (filter === FILTER_ALL || (filter === FILTER_MINE && isTopMine));
   const canFilter = isStudent || isParent;
 
   return (

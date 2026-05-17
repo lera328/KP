@@ -148,7 +148,7 @@ export const TeacherSalary = () => {
   const totalAmount = baseAmount + toNumber(bonus) - toNumber(penalty);
 
   return (
-    <AppLayout title="KiberOne" navItems={teacherNavItems} kidMode>
+    <AppLayout title="КиберШкола" navItems={teacherNavItems} kidMode>
       <div className="mb-4 d-flex flex-wrap align-items-center gap-3">
         <div>
           <h1 className="fw-semibold mb-0" style={{ fontSize: '1.75rem' }}>

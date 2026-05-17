@@ -109,7 +109,7 @@ export const StudentHome = () => {
   const hello = greetingByHour(new Date().getHours());
 
   return (
-    <AppLayout title="KiberOne" navItems={studentNavItems} kidMode>
+    <AppLayout title="КиберШкола" navItems={studentNavItems} kidMode>
       {error && <div className="alert alert-danger rounded-3">{error}</div>}
 
       {/* Приветствие */}

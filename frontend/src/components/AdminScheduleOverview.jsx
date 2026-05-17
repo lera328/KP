@@ -91,6 +91,11 @@ export const AdminScheduleOverview = ({ embedded = false }) => {
         if (dt < weekRange.monday || dt > weekRange.sunday) return false;
         if (groupFilter && Number(l.group) !== Number(groupFilter)) return false;
         if (teacherFilter && Number(l.teacher) !== Number(teacherFilter)) return false;
+        if (l.is_makeup_slot) {
+          const students = Array.isArray(l.makeup_students) ? l.makeup_students : [];
+          const hasApproved = students.some((s) => s.status === 'approved');
+          if (!hasApproved) return false;
+        }
         return true;
       })
       .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
@@ -311,7 +316,19 @@ const AdminLessonCard = ({ lesson, groupMap, teacherMap, teacherLabel, onClick, 
         <div className="fw-semibold small">{formatTime(lesson.starts_at)}</div>
       </div>
       <div className="small fw-semibold text-truncate" style={{ color: '#111827' }}>
-        {isMakeup ? 'Отработка' : group?.name || lesson.group_name || `#${lesson.group}`}
+        {isMakeup ? 'Отработка' : (
+          <span
+            role="link"
+            tabIndex={0}
+            onClick={(e) => { e.stopPropagation(); if (group) navigate(`/admin/groups/${group.id}`); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && group) { e.stopPropagation(); navigate(`/admin/groups/${group.id}`); } }}
+            className="text-decoration-underline"
+            style={{ cursor: 'pointer' }}
+            title="Открыть группу"
+          >
+            {group?.name || lesson.group_name || `#${lesson.group}`}
+          </span>
+        )}
       </div>
       <div className="text-muted" style={{ fontSize: '0.72rem' }}>
         {teacherLabel(teacher)}
@@ -358,7 +375,7 @@ const AdminLessonInfoModal = ({ lesson, groupMap, teacherMap, teacherLabel, onCl
                 {!isMakeup && group && (
                   <div className="mb-2">
                     <strong>Группа: </strong>
-                    <button type="button" className="btn btn-link p-0 fw-semibold" onClick={() => { onClose(); navigate(`/admin/groups`); }}>{group.name}</button>
+                    <button type="button" className="btn btn-link p-0 fw-semibold" onClick={() => { onClose(); navigate(`/admin/groups/${group.id}`); }}>{group.name}</button>
                   </div>
                 )}
                 <div className="mb-1">

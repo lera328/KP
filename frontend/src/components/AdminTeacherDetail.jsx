@@ -279,7 +279,7 @@ export const AdminTeacherDetail = () => {
   const totalAmount = baseAmount + toNumber(bonus) - toNumber(penalty);
 
   return (
-    <AdminLayout title="KiberOne — Преподаватель">
+    <AdminLayout title="КиберШкола — Преподаватель">
       <button
         type="button"
         className="btn btn-link text-decoration-none px-0 mb-2"

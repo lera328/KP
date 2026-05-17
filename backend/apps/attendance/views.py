@@ -359,14 +359,103 @@ def reject_makeup_view(request, request_id):
     except MakeUpRequest.DoesNotExist:
         return Response({"detail": "Заявка не найдена."}, status=status.HTTP_404_NOT_FOUND)
 
-    if request_obj.status == MakeUpRequest.Status.APPROVED:
+    request_obj.delete()
+    return Response({"detail": "Заявка отменена."}, status=status.HTTP_200_OK)
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def parent_cancel_makeup_view(request, request_id):
+    """Родитель отменяет свою заявку на отработку, пока она в статусе 'requested'."""
+    _ensure_parent_role(request.user)
+    parent_profile = getattr(request.user, "parent_profile", None)
+    if not parent_profile:
+        raise PermissionDenied("Профиль родителя не найден")
+
+    try:
+        request_obj = MakeUpRequest.objects.get(id=request_id)
+    except MakeUpRequest.DoesNotExist:
+        return Response({"detail": "Заявка не найдена."}, status=status.HTTP_404_NOT_FOUND)
+
+    student_ids = set(parent_profile.students.values_list("user_id", flat=True))
+    if request_obj.student_id not in student_ids:
+        raise PermissionDenied("Нельзя отменить чужую заявку")
+
+    if request_obj.status != MakeUpRequest.Status.REQUESTED:
         return Response(
-            {"detail": "Нельзя отменить уже подтверждённую отработку."},
+            {"detail": "Можно отменить только заявку в статусе «Запрошена»."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     request_obj.delete()
     return Response({"detail": "Заявка отменена."}, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsAdminRole])
+def admin_absences_and_slots_view(request):
+    """Возвращает два списка для удобного назначения отработки:
+    1) absences — все пропуски без активной заявки на отработку
+    2) slots — будущие слоты отработок с наличием мест
+    """
+    now = timezone.now()
+
+    # Все пропуски, у которых нет активной заявки
+    active_statuses = [
+        MakeUpRequest.Status.REQUESTED,
+        MakeUpRequest.Status.COMPLETED,
+        MakeUpRequest.Status.APPROVED,
+    ]
+    absences_with_active = set(
+        MakeUpRequest.objects.filter(status__in=active_statuses)
+        .values_list("absence_record_id", flat=True)
+    )
+    absences_qs = (
+        AttendanceRecord.objects.filter(status=AttendanceRecord.Status.ABSENT)
+        .select_related("lesson", "lesson__group", "student")
+        .order_by("-lesson__starts_at")
+    )
+    absences = []
+    for rec in absences_qs:
+        if rec.id in absences_with_active:
+            continue
+        student = rec.student
+        lesson = rec.lesson
+        absences.append({
+            "id": rec.id,
+            "student_id": student.id if student else None,
+            "student_name": (student.get_full_name().strip() or student.username) if student else "—",
+            "group_name": lesson.group.name if lesson and lesson.group_id else "",
+            "lesson_topic": (lesson.conducted_topic or "").strip() or (lesson.topic.title if lesson and lesson.topic_id else ""),
+            "lesson_starts_at": lesson.starts_at if lesson else None,
+        })
+
+    # Будущие слоты с местами
+    slots_qs = (
+        Lesson.objects.filter(is_makeup_slot=True, starts_at__gte=now)
+        .select_related("teacher", "location")
+        .order_by("starts_at")
+    )
+    slots = []
+    for lesson in slots_qs:
+        booked = MakeUpRequest.objects.filter(
+            makeup_lesson=lesson,
+            status__in=active_statuses,
+        ).count()
+        capacity = lesson.makeup_capacity or 2
+        if booked >= capacity:
+            continue
+        teacher = lesson.teacher
+        slots.append({
+            "id": lesson.id,
+            "starts_at": lesson.starts_at,
+            "teacher_name": (teacher.get_full_name().strip() or teacher.username) if teacher else "—",
+            "location_name": lesson.location.name if lesson.location_id else "",
+            "capacity": capacity,
+            "booked": booked,
+        })
+
+    return Response({"absences": absences, "slots": slots})
 
 
 @api_view(["POST"])

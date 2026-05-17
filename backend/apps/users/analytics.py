@@ -170,7 +170,7 @@ def render_dashboard_csv(date_from_str=None, date_to_str=None, group_id=None) ->
     buf.write("\ufeff")  # BOM для Excel
     writer = csv.writer(buf, delimiter=";")
 
-    writer.writerow(["KiberOne — отчёт за период", f'{period["from"]} — {period["to"]}'])
+    writer.writerow(["КиберШкола — отчёт за период", f'{period["from"]} — {period["to"]}'])
     writer.writerow([])
     writer.writerow(["Сводные показатели"])
     writer.writerow(["Учеников активных", kpi["students_total"]])

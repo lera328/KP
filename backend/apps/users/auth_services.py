@@ -41,7 +41,7 @@ def request_password_reset(email: str, request=None) -> int:
     for user in users:
         token = PasswordResetToken.objects.create(user=user)
         reset_link = f"{settings.PUBLIC_FRONTEND_URL.rstrip('/')}/reset-password/{token.token}"
-        subject = "Восстановление пароля KiberOne"
+        subject = "Восстановление пароля КиберШкола"
         message = (
             f"Здравствуйте, {user.get_full_name() or user.username}!\n\n"
             f"Вы запросили восстановление пароля. Чтобы задать новый пароль, перейдите по ссылке:\n"

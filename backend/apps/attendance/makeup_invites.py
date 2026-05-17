@@ -116,12 +116,12 @@ def notify_absence_makeup_options(absence: AttendanceRecord) -> dict:
             lines.append("")
         lines.append(
             f"Ссылки действительны {INVITE_TTL_DAYS} дней. "
-            "Если ни один из слотов не подходит, напишите администратору KiberOne."
+            "Если ни один из слотов не подходит, напишите администратору КиберШкола."
         )
 
         try:
             send_mail(
-                subject=f"Отработка для {student_name} — KiberOne",
+                subject=f"Отработка для {student_name} — КиберШкола",
                 message="\n".join(lines),
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email],

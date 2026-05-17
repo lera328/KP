@@ -240,6 +240,46 @@ export const ParentAttendance = () => {
     setPickerSuccess('');
   };
 
+  const handleCancelMakeup = async (makeupItem) => {
+    if (!window.confirm('Отменить заявку на отработку? Вы сможете выбрать другой слот.')) return;
+    setError('');
+    setSuccess('');
+    try {
+      await api.parentCancelMakeup(makeupItem.id);
+      setSuccess('Заявка отменена. Вы можете выбрать другой слот.');
+      // Clear cached suggestions for this absence so they reload
+      setSuggestions((p) => {
+        const next = { ...p };
+        delete next[makeupItem.absence_record_id];
+        return next;
+      });
+      await loadAll();
+      setTimeout(() => setSuccess(''), 4000);
+    } catch (e) {
+      setError(e.message || 'Не удалось отменить заявку.');
+    }
+  };
+
+  const handleChangeSlot = async (makeupItem) => {
+    // Cancel the current request first, then open picker
+    setError('');
+    setSuccess('');
+    try {
+      await api.parentCancelMakeup(makeupItem.id);
+      // Clear cached suggestions
+      setSuggestions((p) => {
+        const next = { ...p };
+        delete next[makeupItem.absence_record_id];
+        return next;
+      });
+      await loadAll();
+      // Open picker for this absence
+      handleOpenPicker(makeupItem.absence_record_id);
+    } catch (e) {
+      setError(e.message || 'Не удалось отменить текущую заявку.');
+    }
+  };
+
   const handleAcceptSlot = async (recordId, lessonId) => {
     const key = `${recordId}:${lessonId}`;
     setAccepting((p) => ({ ...p, [key]: true }));
@@ -276,9 +316,21 @@ export const ParentAttendance = () => {
     const m = makeupByAbsence.get(Number(record.id));
     if (m) {
       return (
-        <span className="badge rounded-pill" style={{ background: '#eff6ff', color: '#2563eb', fontWeight: 500 }}>
-          {MAKEUP_STATUS_LABELS[m.status] || m.status}{m.makeup_starts_at ? ` · ${formatDateTime(m.makeup_starts_at)}` : ''}
-        </span>
+        <div className="d-flex flex-wrap align-items-center gap-2">
+          <span className="badge rounded-pill" style={{ background: '#eff6ff', color: '#2563eb', fontWeight: 500 }}>
+            {MAKEUP_STATUS_LABELS[m.status] || m.status}{m.makeup_starts_at ? ` · ${formatDateTime(m.makeup_starts_at)}` : ''}
+          </span>
+          {m.status === 'requested' && (
+            <button
+              type="button"
+              className="btn btn-sm rounded-pill px-2"
+              style={{ background: '#fef2f2', color: '#dc2626', border: 'none', fontSize: '0.72rem', fontWeight: 600 }}
+              onClick={(e) => { e.stopPropagation(); handleChangeSlot(m); }}
+            >
+              Сменить слот
+            </button>
+          )}
+        </div>
       );
     }
     if (optimisticRequested.has(Number(record.id))) {
@@ -302,7 +354,7 @@ export const ParentAttendance = () => {
   };
 
   return (
-    <AppLayout title="KiberOne — Посещаемость" navItems={parentNavItems} kidMode>
+    <AppLayout title="КиберШкола — Посещаемость" navItems={parentNavItems} kidMode>
       <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
         <h1 className="fw-semibold mb-0" style={{ fontSize: '1.75rem' }}>Посещаемость</h1>
         <button
@@ -488,6 +540,26 @@ export const ParentAttendance = () => {
                         <span className="badge rounded-pill" style={{ background: '#eff6ff', color: '#2563eb', fontWeight: 500 }}>
                           {MAKEUP_STATUS_LABELS[item.status] || item.status}
                         </span>
+                        {item.status === 'requested' && (
+                          <div className="d-flex gap-2">
+                            <button
+                              type="button"
+                              className="btn btn-sm rounded-pill px-3"
+                              style={{ background: '#f8f9fb', color: '#374151', border: '1px solid #e5e7eb', fontSize: '0.75rem', fontWeight: 600 }}
+                              onClick={() => handleChangeSlot(item)}
+                            >
+                              Сменить слот
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm rounded-pill px-3"
+                              style={{ background: '#fef2f2', color: '#dc2626', border: 'none', fontSize: '0.75rem', fontWeight: 600 }}
+                              onClick={() => handleCancelMakeup(item)}
+                            >
+                              Отменить
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

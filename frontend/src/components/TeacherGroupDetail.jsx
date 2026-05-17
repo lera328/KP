@@ -116,7 +116,7 @@ export const TeacherGroupDetail = () => {
   };
 
   return (
-    <AppLayout title="KiberOne" navItems={teacherNavItems} kidMode>
+    <AppLayout title="КиберШкола" navItems={teacherNavItems} kidMode>
       <button
         type="button"
         className="btn btn-link text-decoration-none px-0 mb-2"
@@ -305,99 +305,124 @@ const StudentsList = ({ students, onStudentClick }) => {
   );
 };
 
-const ScheduleList = ({ upcoming, past, onLessonClick }) => (
-  <div className="d-flex flex-column gap-4">
-    <Section title="Предстоящие" count={upcoming.length}>
-      {upcoming.length === 0 ? (
-        <Empty text="Нет запланированных занятий." />
-      ) : (
-        upcoming.map((l) => (
-          <LessonCard
-            key={l.id}
-            lesson={l}
-            tone="upcoming"
-            onClick={() => onLessonClick(l)}
-          />
-        ))
-      )}
-    </Section>
-    <Section title="Прошедшие" count={past.length}>
-      {past.length === 0 ? (
-        <Empty text="История занятий пока пуста." />
-      ) : (
-        past.map((l) => (
-          <LessonCard
-            key={l.id}
-            lesson={l}
-            tone={l.conducted_topic ? 'done' : 'pending'}
-            onClick={() => onLessonClick(l)}
-          />
-        ))
-      )}
-    </Section>
-  </div>
-);
+const WEEKDAY_SHORT_MAP = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
-const Section = ({ title, count, children }) => (
-  <div>
-    <div
-      className="text-muted small text-uppercase mb-2 d-flex justify-content-between"
-      style={{ letterSpacing: 0.5 }}
-    >
-      <span>{title}</span>
-      <span>{count}</span>
+const TILE_META = {
+  upcoming: { bg: '#f9fafb', border: '#e5e7eb', text: '#6b7280', dot: '#9ca3af', label: 'Запланирован' },
+  done: { bg: '#ecfdf5', border: '#a7f3d0', text: '#065f46', dot: '#16a34a', label: 'Проведён' },
+  pending: { bg: '#fffbeb', border: '#fde68a', text: '#92400e', dot: '#b45309', label: 'Не проведён' },
+};
+
+const ScheduleList = ({ upcoming, past, onLessonClick }) => {
+  const now = new Date();
+  const allSorted = useMemo(() => {
+    const items = [
+      ...upcoming.map((l) => ({ ...l, _tone: 'upcoming' })),
+      ...past.map((l) => ({ ...l, _tone: l.conducted_topic ? 'done' : 'pending' })),
+    ];
+    items.sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+    return items;
+  }, [upcoming, past]);
+
+  const nowIndex = useMemo(() => {
+    for (let i = 0; i < allSorted.length; i += 1) {
+      if (new Date(allSorted[i].starts_at) >= now) return i;
+    }
+    return allSorted.length;
+  }, [allSorted, now]);
+
+  const tiles = [];
+  allSorted.forEach((l, idx) => {
+    if (idx === nowIndex) {
+      tiles.push(
+        <div key="__now__" style={{ background: '#fff', border: '2px dashed #6b7280', borderRadius: 10, padding: '6px 8px', minWidth: 56, textAlign: 'center', color: '#374151', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+          <svg width="10" height="14" viewBox="0 0 10 14" fill="none" style={{ display: 'block' }}><path d="M1 1h8v9l-4 3-4-3V1z" fill="#374151" /></svg>
+          <div style={{ fontSize: '0.68rem', fontWeight: 700, lineHeight: 1 }}>Сейчас</div>
+        </div>,
+      );
+    }
+    const meta = TILE_META[l._tone] || TILE_META.upcoming;
+    const dt = new Date(l.starts_at);
+    const weekday = WEEKDAY_SHORT_MAP[dt.getDay()];
+    const dd = String(dt.getDate()).padStart(2, '0');
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const isToday = dt.toDateString() === now.toDateString();
+    tiles.push(
+      <button
+        key={l.id}
+        type="button"
+        onClick={() => onLessonClick(l)}
+        title={[formatDateTime(l.starts_at), l.conducted_topic || l.topic_title || 'Тема не указана', meta.label].filter(Boolean).join('\n')}
+        style={{
+          background: meta.bg,
+          border: `1.5px solid ${isToday ? '#111827' : meta.border}`,
+          borderRadius: 10,
+          padding: '6px 8px',
+          minWidth: 56,
+          textAlign: 'center',
+          color: meta.text,
+          cursor: 'pointer',
+          transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+          boxShadow: isToday ? '0 0 0 2px rgba(17,24,39,0.15)' : 'none',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = isToday ? '0 0 0 2px rgba(17,24,39,0.15)' : 'none'; }}
+      >
+        <div style={{ width: 8, height: 8, borderRadius: '50%', background: meta.dot, margin: '0 auto 3px' }} />
+        <div style={{ fontSize: '0.68rem', fontWeight: 600, opacity: 0.7, lineHeight: 1.1 }}>{weekday}</div>
+        <div style={{ fontSize: '0.82rem', fontWeight: 700, lineHeight: 1.2 }}>{dd}.{mm}</div>
+      </button>,
+    );
+  });
+  if (nowIndex === allSorted.length) {
+    tiles.push(
+      <div key="__now__" style={{ background: '#fff', border: '2px dashed #6b7280', borderRadius: 10, padding: '6px 8px', minWidth: 56, textAlign: 'center', color: '#374151', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+        <svg width="10" height="14" viewBox="0 0 10 14" fill="none" style={{ display: 'block' }}><path d="M1 1h8v9l-4 3-4-3V1z" fill="#374151" /></svg>
+        <div style={{ fontSize: '0.68rem', fontWeight: 700, lineHeight: 1 }}>Сейчас</div>
+      </div>,
+    );
+  }
+
+  const legendItems = [
+    { key: 'done', label: 'Проведён' },
+    { key: 'upcoming', label: 'Запланирован' },
+    { key: 'pending', label: 'Не проведён' },
+  ];
+
+  return (
+    <div className="card border-0 shadow-sm rounded-4">
+      <div className="card-body p-3">
+        <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+          <div className="fw-semibold" style={{ fontSize: '0.95rem' }}>История и прогноз посещений</div>
+        </div>
+        {allSorted.length === 0 ? (
+          <div className="text-muted small text-center py-3">Занятий не найдено.</div>
+        ) : (
+          <div className="d-flex flex-wrap gap-2">{tiles}</div>
+        )}
+        <div className="d-flex flex-wrap gap-4 mt-3 pt-2" style={{ borderTop: '1px solid #f3f4f6' }}>
+          {legendItems.map((li) => {
+            const m = TILE_META[li.key];
+            return (
+              <div key={li.key} className="d-flex align-items-center gap-2">
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: m.dot, display: 'inline-block' }} />
+                  <span className="small" style={{ color: m.text, fontWeight: 500 }}>{li.label}</span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
-    <div className="d-flex flex-column gap-2">{children}</div>
-  </div>
-);
+  );
+};
 
 const Empty = ({ text }) => (
   <div className="card border-0 shadow-sm rounded-4">
     <div className="card-body text-center py-4 text-muted small">{text}</div>
   </div>
 );
-
-const LessonCard = ({ lesson, tone, onClick }) => {
-  const tones = {
-    upcoming: { bg: '#eef2ff', color: '#3730a3', label: 'Предстоит' },
-    done: { bg: '#ecfdf5', color: '#16a34a', label: 'Проведён' },
-    pending: { bg: '#fef3c7', color: '#b45309', label: 'Не проведён' },
-  };
-  const t = tones[tone] || tones.upcoming;
-  return (
-    <button
-      type="button"
-      className="card border-0 shadow-sm rounded-4 text-start"
-      style={{ cursor: 'pointer', borderLeft: `4px solid ${t.color}` }}
-      onClick={onClick}
-    >
-      <div className="card-body p-3 d-flex flex-wrap align-items-center gap-3">
-        <div
-          className="rounded-3 px-3 py-2 fw-semibold flex-shrink-0 text-center"
-          style={{ background: '#f8f9fb', minWidth: 160, fontSize: '0.9rem' }}
-        >
-          {formatDateTime(lesson.starts_at)}
-        </div>
-        <div className="flex-grow-1" style={{ minWidth: 200 }}>
-          <div className="fw-semibold">
-            {lesson.conducted_topic || lesson.topic_title || 'Тема не указана'}
-          </div>
-          {lesson.conducted_description && (
-            <div className="text-muted small mt-1">
-              {lesson.conducted_description}
-            </div>
-          )}
-        </div>
-        <span
-          className="badge rounded-pill"
-          style={{ background: t.bg, color: t.color, fontWeight: 500 }}
-        >
-          {t.label}
-        </span>
-      </div>
-    </button>
-  );
-};
 
 const CommentsList = ({
   comments,

@@ -1,4 +1,4 @@
-"""Полный сброс и насеивание демо-данных KiberOne.
+"""Полный сброс и насеивание демо-данных КиберШкола.
 
 Запуск:
     docker compose exec -T backend python seed_demo.py
@@ -94,26 +94,26 @@ def seed():
         locations = {loc.name: loc for loc in Location.objects.all()}
 
     # 1. Курс и темы
-    course = Course.objects.create(name="KiberOne Junior", description="Программирование для детей")
+    course = Course.objects.create(name="КиберШкола Junior", description="Программирование для детей")
     topics = [
         LessonTopic.objects.create(course=course, title=f"Тема {i}: модуль {i}") for i in range(1, 9)
     ]
 
     # 2. Админ
-    admin = make_user("admin", "Админ", "Системы", "admin@kiberone.test", Role.Code.ADMIN, is_super=True)
+    admin = make_user("admin", "Админ", "Системы", "admin@КиберШкола.test", Role.Code.ADMIN, is_super=True)
 
     # 3. Преподаватели
     teachers = [
-        make_user("anna",   "Анна",   "Иванова",  "anna@kiberone.test",   Role.Code.TEACHER),
-        make_user("dmitry", "Дмитрий", "Петров",   "dmitry@kiberone.test", Role.Code.TEACHER),
-        make_user("elena",  "Елена",  "Сидорова", "elena@kiberone.test",  Role.Code.TEACHER),
+        make_user("anna",   "Анна",   "Иванова",  "anna@КиберШкола.test",   Role.Code.TEACHER),
+        make_user("dmitry", "Дмитрий", "Петров",   "dmitry@КиберШкола.test", Role.Code.TEACHER),
+        make_user("elena",  "Елена",  "Сидорова", "elena@КиберШкола.test",  Role.Code.TEACHER),
     ]
 
     # 4. Родители
     parents = [
-        make_user("smirnov", "Сергей",  "Смирнов",  "smirnov@kiberone.test",  Role.Code.PARENT),
-        make_user("kuznetsov", "Ольга", "Кузнецова", "kuznetsov@kiberone.test", Role.Code.PARENT),
-        make_user("popov",    "Игорь",  "Попов",    "popov@kiberone.test",    Role.Code.PARENT),
+        make_user("smirnov", "Сергей",  "Смирнов",  "smirnov@КиберШкола.test",  Role.Code.PARENT),
+        make_user("kuznetsov", "Ольга", "Кузнецова", "kuznetsov@КиберШкола.test", Role.Code.PARENT),
+        make_user("popov",    "Игорь",  "Попов",    "popov@КиберШкола.test",    Role.Code.PARENT),
     ]
 
     # 5. Ученики
@@ -126,7 +126,7 @@ def seed():
     ]
     students = []
     for username, first, last, parent_user in students_meta:
-        student = make_user(username, first, last, f"{username}@kiberone.test", Role.Code.STUDENT)
+        student = make_user(username, first, last, f"{username}@КиберШкола.test", Role.Code.STUDENT)
         sp = StudentProfile.objects.create(user=student)
         pp, _ = ParentProfile.objects.get_or_create(user=parent_user)
         pp.students.add(sp)

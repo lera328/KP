@@ -82,12 +82,19 @@ export const TeacherSchedule = () => {
   const weekStart = useMemo(() => startOfWeek(cursor), [cursor]);
   const weekEnd = useMemo(() => addDays(weekStart, 7), [weekStart]);
 
+  const isMakeupVisible = (l) => {
+    if (!l.is_makeup_slot) return true;
+    const students = Array.isArray(l.makeup_students) ? l.makeup_students : [];
+    return students.some((s) => s.status === 'approved');
+  };
+
   const weekLessons = useMemo(() => {
     return lessons
       .filter((l) => {
         if (!l.starts_at) return false;
         const d = new Date(l.starts_at);
-        return d >= weekStart && d < weekEnd;
+        if (d < weekStart || d >= weekEnd) return false;
+        return isMakeupVisible(l);
       })
       .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
   }, [lessons, weekStart, weekEnd]);
@@ -109,7 +116,7 @@ export const TeacherSchedule = () => {
 
   const dayLessons = useMemo(() => {
     return lessons
-      .filter((l) => l.starts_at && isSameDay(new Date(l.starts_at), cursor))
+      .filter((l) => l.starts_at && isSameDay(new Date(l.starts_at), cursor) && isMakeupVisible(l))
       .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
   }, [lessons, cursor]);
 
@@ -127,7 +134,7 @@ export const TeacherSchedule = () => {
   const goToday = () => setCursor(startOfDay(new Date()));
 
   return (
-    <AppLayout title="KiberOne" navItems={teacherNavItems} kidMode>
+    <AppLayout title="КиберШкола" navItems={teacherNavItems} kidMode>
       <div className="mb-4 d-flex flex-wrap align-items-center gap-3">
         <h1 className="fw-semibold mb-0" style={{ fontSize: '1.75rem' }}>
           Расписание

@@ -56,7 +56,7 @@ const ParentDashboard = () => {
   const navigate = useNavigate();
 
   return (
-    <AppLayout title="KiberOne — Родитель" navItems={parentNavItems} kidMode>
+    <AppLayout title="КиберШкола — Родитель" navItems={parentNavItems} kidMode>
       <div className="mb-4">
         <h1 className="fw-semibold mb-1" style={{ fontSize: '1.75rem' }}>
           Добро пожаловать{user?.first_name ? `, ${user.first_name}` : ''}!
@@ -117,7 +117,7 @@ const DefaultDashboard = () => {
     <div>
       <nav className="navbar navbar-expand-lg navbar-dark bg-secondary">
         <div className="container-fluid">
-          <span className="navbar-brand">KiberOne</span>
+          <span className="navbar-brand">КиберШкола</span>
           <button
             className="btn btn-outline-light btn-sm ms-auto"
             onClick={handleLogout}

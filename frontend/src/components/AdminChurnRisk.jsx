@@ -67,7 +67,7 @@ export default function AdminChurnRisk() {
   }), [rows]);
 
   return (
-    <AdminLayout title="KiberOne — Риск оттока">
+    <AdminLayout title="КиберШкола — Риск оттока">
       {error && <div className="alert alert-danger rounded-3">{error}</div>}
 
       {/* Header */}

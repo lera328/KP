@@ -14,7 +14,7 @@ const formatDateTime = (value) => {
 
 const STATE_MESSAGES = {
   used: 'Это приглашение уже использовано — отработка подтверждена ранее.',
-  expired: 'Срок действия приглашения истёк. Обратитесь к администратору KiberOne.',
+  expired: 'Срок действия приглашения истёк. Обратитесь к администратору КиберШкола.',
 };
 
 export default function MakeupConfirm() {
@@ -81,7 +81,7 @@ export default function MakeupConfirm() {
   return (
     <div className="container py-5" style={{ maxWidth: 640 }}>
       <div className="text-center mb-4">
-        <h2 className="fw-semibold">KiberOne</h2>
+        <h2 className="fw-semibold">КиберШкола</h2>
         <div className="text-muted">Подтверждение отработки пропуска</div>
       </div>
 

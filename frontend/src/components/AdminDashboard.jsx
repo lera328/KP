@@ -120,7 +120,7 @@ export const AdminDashboard = () => {
   const groupsCount = metrics?.groups_options?.length || 0;
 
   return (
-    <AdminLayout title="KiberOne — Администратор">
+    <AdminLayout title="КиберШкола — Администратор">
       {error && <div className="alert alert-danger rounded-3">{error}</div>}
 
       {/* Шапка приветствия */}

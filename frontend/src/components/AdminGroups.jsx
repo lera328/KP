@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { AdminLayout } from './AdminLayout';
 import { AdminGroupModal } from './AdminGroupModal';
@@ -83,6 +84,7 @@ const SearchableMultiSelect = ({
 };
 
 export const AdminGroups = () => {
+  const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [groups, setGroups] = useState([]);
   const [users, setUsers] = useState([]);
@@ -258,7 +260,7 @@ export const AdminGroups = () => {
   };
 
   return (
-    <AdminLayout title="KiberOne — Группы">
+    <AdminLayout title="КиберШкола — Группы">
       {error ? <div className="alert alert-danger rounded-3">{error}</div> : null}
       {success ? <div className="alert alert-success rounded-3">{success}</div> : null}
 
@@ -362,11 +364,11 @@ export const AdminGroups = () => {
                   tabIndex={0}
                   className="card border-0 shadow-sm rounded-4 h-100"
                   style={{ cursor: 'pointer' }}
-                  onClick={() => setSelectedGroup(group)}
+                  onClick={() => navigate(`/admin/groups/${group.id}`)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      setSelectedGroup(group);
+                      navigate(`/admin/groups/${group.id}`);
                     }
                   }}
                 >

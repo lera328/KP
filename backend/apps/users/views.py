@@ -67,7 +67,23 @@ def session_login_view(request):
             user = authenticate(request, username=user_obj.username, password=password)
 
     if not user:
-        return Response({"detail": "Неверный логин или пароль"}, status=status.HTTP_401_UNAUTHORIZED)
+        # Проверяем, не заблокирован ли аккаунт
+        candidate = (
+            User.objects.filter(username=login_value).first()
+            or User.objects.filter(email=login_value).first()
+        )
+        if candidate and not candidate.is_active:
+            return Response(
+                {"detail": "Ваш аккаунт деактивирован. Обратитесь к администратору."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return Response({"detail": "Неверный логин или пароль."}, status=status.HTTP_401_UNAUTHORIZED)
+
+    if not user.is_active:
+        return Response(
+            {"detail": "Ваш аккаунт деактивирован. Обратитесь к администратору."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     refresh = RefreshToken.for_user(user)
     return Response(
@@ -754,7 +770,7 @@ def dashboard_export_csv_view(request):
     period_from = request.query_params.get("from") or "period"
     period_to = request.query_params.get("to") or "now"
     response["Content-Disposition"] = (
-        f'attachment; filename="kiberone_report_{period_from}_{period_to}.csv"'
+        f'attachment; filename="КиберШкола_report_{period_from}_{period_to}.csv"'
     )
     return response
 

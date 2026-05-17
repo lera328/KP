@@ -63,7 +63,7 @@ export const ParentBilling = () => {
   }, [hasPendingIntent]);
 
   return (
-    <AppLayout title="KiberOne — Оплата" navItems={parentNavItems} kidMode>
+    <AppLayout title="КиберШкола — Оплата" navItems={parentNavItems} kidMode>
       <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
         <h1 className="fw-semibold mb-0" style={{ fontSize: '1.75rem' }}>Оплата</h1>
         <button type="button" className="btn btn-light border rounded-pill px-3 ms-auto" onClick={loadBilling} disabled={loading}>

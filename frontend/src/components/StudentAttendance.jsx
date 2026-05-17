@@ -77,7 +77,7 @@ export const StudentAttendance = () => {
   const nextLesson = upcomingLessons.length > 0 ? upcomingLessons[0] : null;
 
   return (
-    <AppLayout title="KiberOne — Ученик" navItems={studentNavItems}>
+    <AppLayout title="КиберШкола — Ученик" navItems={studentNavItems}>
       <div>
         {error && <div className="alert alert-danger">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}

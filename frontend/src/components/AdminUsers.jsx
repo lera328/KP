@@ -376,7 +376,7 @@ export const AdminUsers = () => {
   };
 
   return (
-    <AdminLayout title="KiberOne — Пользователи">
+    <AdminLayout title="КиберШкола — Пользователи">
       {error ? <div className="alert alert-danger rounded-3">{error}</div> : null}
       {success ? <div className="alert alert-success rounded-3">{success}</div> : null}
 

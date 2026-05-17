@@ -112,7 +112,10 @@ class APIService {
 
     if (!response.ok) {
       const errorPayload = await response.json().catch(() => null);
-      throw new Error(formatApiErrorMessage(errorPayload));
+      const message = formatApiErrorMessage(errorPayload);
+      const err = new Error(message);
+      err.status = response.status;
+      throw err;
     }
 
     if (response.status === 204) {
@@ -233,7 +236,7 @@ class APIService {
     const blob = await response.blob();
     const disposition = response.headers.get('content-disposition') || '';
     const match = disposition.match(/filename="?([^";]+)"?/i);
-    const filename = match ? match[1] : 'kiberone_report.csv';
+    const filename = match ? match[1] : 'КиберШкола_report.csv';
     return { blob, filename };
   }
 
@@ -580,6 +583,16 @@ class APIService {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  async parentCancelMakeup(makeupId) {
+    return this.request(`/makeups/${makeupId}/parent-cancel/`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getAdminAbsencesAndSlots() {
+    return this.request('/makeups/admin/absences-and-slots/');
   }
 
   // Finance endpoints
