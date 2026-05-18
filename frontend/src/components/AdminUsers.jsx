@@ -4,6 +4,38 @@ import { AdminLayout } from './AdminLayout';
 import { useAuth } from '../context/AuthContext';
 import { IconPlus, IconRefresh, IconSearch } from './KidIcons';
 
+const SearchableMultiSelect = ({ label, items, selectedIds, onToggle, loading, placeholder, emptyText, renderLabel }) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const filtered = useMemo(() => {
+    const v = query.trim().toLowerCase();
+    if (!v) return items;
+    return items.filter((item) => renderLabel(item).toLowerCase().includes(v));
+  }, [items, query, renderLabel]);
+  return (
+    <div className="mb-3 position-relative">
+      <label className="form-label d-block">{label}</label>
+      <button type="button" className="form-control text-start d-flex justify-content-between align-items-center" onClick={() => setOpen((p) => !p)} disabled={loading}>
+        <span>{selectedIds.length > 0 ? `Выбрано: ${selectedIds.length}` : placeholder}</span>
+        <span className="text-muted">▾</span>
+      </button>
+      {open && (
+        <div className="border rounded bg-white p-2 mt-1 position-absolute w-100 shadow-sm" style={{ zIndex: 20, maxHeight: '220px', overflow: 'auto' }}>
+          <input type="text" className="form-control form-control-sm mb-2" placeholder="Поиск..." value={query} onChange={(e) => setQuery(e.target.value)} />
+          {filtered.length === 0 ? (
+            <div className="text-muted small px-1 py-2">{emptyText}</div>
+          ) : filtered.map((item) => (
+            <label className="form-check d-block" key={item.id}>
+              <input className="form-check-input" type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => onToggle(item.id)} disabled={loading} />
+              <span className="form-check-label">{renderLabel(item)}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ROLE_BADGE = {
   admin: { bg: '#fef3c7', color: '#b45309' },
   teacher: { bg: '#eff6ff', color: '#1d4ed8' },
@@ -913,27 +945,21 @@ export const AdminUsers = () => {
                     ) : null}
 
                     {createForm.role === 'parent' ? (
-                      <div className="mb-3">
-                        <label className="form-label">Дети (ученики)</label>
-                        <select
-                          className="form-select"
-                          multiple
-                          value={createForm.child_ids.map(String)}
-                          onChange={(e) => {
-                            const selected = Array.from(e.target.selectedOptions, (opt) => Number(opt.value));
-                            setCreateForm((prev) => ({ ...prev, child_ids: selected }));
-                          }}
-                          disabled={savingCreate}
-                          style={{ minHeight: '120px' }}
-                        >
-                          {studentUsers.map((s) => (
-                            <option key={`create-child-${s.id}`} value={s.id}>
-                              {`${s.first_name || ''} ${s.last_name || ''}`.trim() || s.username}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="form-text">Удерживайте Ctrl для выбора нескольких учеников.</div>
-                      </div>
+                      <SearchableMultiSelect
+                        label="Дети (ученики)"
+                        items={studentUsers}
+                        selectedIds={createForm.child_ids}
+                        onToggle={(id) => setCreateForm((prev) => ({
+                          ...prev,
+                          child_ids: prev.child_ids.includes(id)
+                            ? prev.child_ids.filter((x) => x !== id)
+                            : [...prev.child_ids, id],
+                        }))}
+                        loading={savingCreate}
+                        placeholder="Выберите учеников"
+                        emptyText="Ученики не найдены"
+                        renderLabel={(u) => `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.username}
+                      />
                     ) : null}
                   </div>
                   <div className="modal-footer border-0">
@@ -1121,27 +1147,21 @@ export const AdminUsers = () => {
                     ) : null}
 
                     {editForm.role === 'parent' ? (
-                      <div className="mb-3">
-                        <label className="form-label">Дети (ученики)</label>
-                        <select
-                          className="form-select"
-                          multiple
-                          value={editForm.child_ids.map(String)}
-                          onChange={(e) => {
-                            const selected = Array.from(e.target.selectedOptions, (opt) => Number(opt.value));
-                            setEditForm((prev) => ({ ...prev, child_ids: selected }));
-                          }}
-                          disabled={savingEdit}
-                          style={{ minHeight: '120px' }}
-                        >
-                          {studentUsers.map((s) => (
-                            <option key={`edit-child-${s.id}`} value={s.id}>
-                              {`${s.first_name || ''} ${s.last_name || ''}`.trim() || s.username}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="form-text">Удерживайте Ctrl для выбора нескольких учеников.</div>
-                      </div>
+                      <SearchableMultiSelect
+                        label="Дети (ученики)"
+                        items={studentUsers}
+                        selectedIds={editForm.child_ids}
+                        onToggle={(id) => setEditForm((prev) => ({
+                          ...prev,
+                          child_ids: prev.child_ids.includes(id)
+                            ? prev.child_ids.filter((x) => x !== id)
+                            : [...prev.child_ids, id],
+                        }))}
+                        loading={savingEdit}
+                        placeholder="Выберите учеников"
+                        emptyText="Ученики не найдены"
+                        renderLabel={(u) => `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.username}
+                      />
                     ) : null}
                   </div>
                   <div className="modal-footer border-0">
