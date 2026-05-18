@@ -174,18 +174,6 @@ class GroupScheduleSetupSerializer(serializers.Serializer):
 
         starts_at_local = timezone.localtime(attrs["starts_at"])
 
-        if group.weekly_lesson_weekday is not None and group.weekly_lesson_time is not None:
-            existing_weekday = int(group.weekly_lesson_weekday)
-            existing_time = group.weekly_lesson_time
-            if (
-                existing_weekday != starts_at_local.weekday()
-                or existing_time.hour != starts_at_local.hour
-                or existing_time.minute != starts_at_local.minute
-            ):
-                raise serializers.ValidationError(
-                    "У группы уже зафиксирован другой стабильный слот. Изменение времени недоступно."
-                )
-
         attrs["group"] = group
         attrs["teacher"] = teacher
         attrs["starts_at_local"] = starts_at_local

@@ -20,7 +20,6 @@ const TABS = [
   { key: 'schedule', label: 'Расписание' },
   { key: 'planning', label: 'Планирование' },
   { key: 'comments', label: 'Заметки' },
-  { key: 'danger', label: 'Удаление' },
 ];
 
 export const AdminGroupDetail = () => {
@@ -221,6 +220,13 @@ export const AdminGroupDetail = () => {
                     </span>
                   </div>
                 </div>
+                <button
+                  className="btn btn-outline-danger btn-sm rounded-pill px-3"
+                  onClick={handleDeleteGroup}
+                  disabled={deletingGroup}
+                >
+                  {deletingGroup ? 'Удаляем...' : 'Удалить'}
+                </button>
               </div>
 
               <div className="row g-2 mt-3">
@@ -327,18 +333,6 @@ export const AdminGroupDetail = () => {
               saving={savingComment}
               onDelete={handleDeleteComment}
             />
-          )}
-          {tab === 'danger' && (
-            <div className="card border-0 shadow-sm rounded-4">
-              <div className="card-body p-4">
-                <div className="alert alert-warning mb-3">
-                  Удаление группы навсегда уберёт её, все уроки и записи посещаемости.
-                </div>
-                <button className="btn btn-danger rounded-pill px-4" onClick={handleDeleteGroup} disabled={deletingGroup}>
-                  {deletingGroup ? 'Удаляем...' : 'Удалить группу'}
-                </button>
-              </div>
-            </div>
           )}
         </>
       )}
