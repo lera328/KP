@@ -37,6 +37,7 @@ export const AdminGroupDetail = () => {
   const [savingComment, setSavingComment] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [teachers, setTeachers] = useState([]);
+  const [allStudents, setAllStudents] = useState([]);
 
   // Schedule setup
   const [scheduleForm, setScheduleForm] = useState({ teacher: '', starts_at: '' });
@@ -66,6 +67,8 @@ export const AdminGroupDetail = () => {
       const allUsers = Array.isArray(usersData) ? usersData : [];
       const teachersList = allUsers.filter((u) => Array.isArray(u.roles) && u.roles.includes('teacher'));
       setTeachers(teachersList);
+      const studentsList = allUsers.filter((u) => Array.isArray(u.roles) && u.roles.includes('student'));
+      setAllStudents(studentsList);
       const defaultTeacher = groupData?.teachers?.[0]?.id ? String(groupData.teachers[0].id) : '';
       setScheduleForm((p) => ({ ...p, teacher: p.teacher || defaultTeacher }));
       setExtraForm((p) => ({ ...p, teacher: p.teacher || defaultTeacher }));
@@ -96,6 +99,33 @@ export const AdminGroupDetail = () => {
   }, [lessons, now]);
 
   const conductedCount = pastLessons.filter((l) => l.conducted_topic).length;
+
+  const availableStudents = useMemo(() => {
+    const currentIds = new Set((group?.students || []).map((s) => s.id));
+    return allStudents.filter((s) => !currentIds.has(s.id));
+  }, [allStudents, group]);
+
+  const handleRemoveStudent = async (studentId) => {
+    const currentStudentIds = (group?.students || []).map((s) => s.id).filter((id) => id !== studentId);
+    setError('');
+    try {
+      await api.updateGroup(groupId, { student_ids: currentStudentIds });
+      await load();
+    } catch (err) {
+      setError(err.message || '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0443\u0434\u0430\u043b\u0438\u0442\u044c \u0443\u0447\u0435\u043d\u0438\u043a\u0430.');
+    }
+  };
+
+  const handleAddStudent = async (studentId) => {
+    const currentStudentIds = (group?.students || []).map((s) => s.id);
+    setError('');
+    try {
+      await api.updateGroup(groupId, { student_ids: [...currentStudentIds, studentId] });
+      await load();
+    } catch (err) {
+      setError(err.message || '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0434\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0443\u0447\u0435\u043d\u0438\u043a\u0430.');
+    }
+  };
 
   const handleSetupSchedule = async (e) => {
     e.preventDefault();
@@ -259,7 +289,14 @@ export const AdminGroupDetail = () => {
           </div>
 
           {tab === 'students' && (
-            <StudentsList students={group.students || []} teachers={group.teachers || []} navigate={navigate} />
+            <StudentsList
+              students={group.students || []}
+              teachers={group.teachers || []}
+              navigate={navigate}
+              onRemoveStudent={handleRemoveStudent}
+              availableStudents={availableStudents}
+              onAddStudent={handleAddStudent}
+            />
           )}
 
           {tab === 'schedule' && (
@@ -360,31 +397,75 @@ const KpiCard = ({ label, value }) => (
   </div>
 );
 
-const StudentsList = ({ students, teachers, navigate }) => {
+const StudentsList = ({ students, teachers, navigate, onRemoveStudent, availableStudents, onAddStudent }) => {
+  const [addQuery, setAddQuery] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
+
+  const filteredAvailable = useMemo(() => {
+    const q = addQuery.trim().toLowerCase();
+    if (!q) return availableStudents;
+    return availableStudents.filter((s) => fullName(s).toLowerCase().includes(q) || s.username.toLowerCase().includes(q));
+  }, [availableStudents, addQuery]);
+
   const all = [
     ...teachers.map((t) => ({ ...t, _role: 'teacher' })),
     ...students.map((s) => ({ ...s, _role: 'student' })),
   ];
 
-  if (all.length === 0) {
-    return <Empty text="В группе пока нет участников." />;
-  }
-
   return (
     <div className="d-flex flex-column gap-2">
-      {all.map((u) => {
+      {/* Добавление ученика */}
+      <div className="card border-0 shadow-sm rounded-4 mb-2">
+        <div className="card-body p-3">
+          <div className="position-relative">
+            <button
+              type="button"
+              className="btn btn-outline-dark btn-sm rounded-pill px-3 w-100 text-start d-flex justify-content-between align-items-center"
+              onClick={() => setAddOpen((p) => !p)}
+            >
+              <span>+ Добавить ученика</span>
+              <span className="text-muted">▾</span>
+            </button>
+            {addOpen && (
+              <div className="border rounded bg-white p-2 mt-1 position-absolute w-100 shadow-sm" style={{ zIndex: 20, maxHeight: '220px', overflow: 'auto' }}>
+                <input
+                  type="text"
+                  className="form-control form-control-sm mb-2"
+                  placeholder="Поиск по имени..."
+                  value={addQuery}
+                  onChange={(e) => setAddQuery(e.target.value)}
+                  autoFocus
+                />
+                {filteredAvailable.length === 0 ? (
+                  <div className="text-muted small px-1 py-2">Нет доступных учеников.</div>
+                ) : (
+                  filteredAvailable.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className="btn btn-sm btn-light w-100 text-start mb-1"
+                      onClick={() => { onAddStudent(s.id); setAddOpen(false); setAddQuery(''); }}
+                    >
+                      {fullName(s)} <span className="text-muted small">@{s.username}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {all.length === 0 ? (
+        <Empty text="В группе пока нет участников." />
+      ) : all.map((u) => {
         const name = fullName(u);
         const init = initials(u);
         const isTeacher = u._role === 'teacher';
         return (
-          <button
+          <div
             key={`${u._role}-${u.id}`}
-            type="button"
-            className="card border-0 shadow-sm rounded-4 text-start"
-            style={{ cursor: 'pointer', transition: 'transform 0.1s ease' }}
-            onClick={() => navigate(isTeacher ? `/admin/teachers/${u.id}` : `/admin/students/${u.id}`)}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+            className="card border-0 shadow-sm rounded-4"
           >
             <div className="card-body p-3 d-flex align-items-center gap-3">
               <div
@@ -397,7 +478,7 @@ const StudentsList = ({ students, teachers, navigate }) => {
               >
                 {init || '👤'}
               </div>
-              <div className="flex-grow-1">
+              <div className="flex-grow-1" style={{ cursor: 'pointer' }} onClick={() => navigate(isTeacher ? `/admin/teachers/${u.id}` : `/admin/students/${u.id}`)}>
                 <div className="fw-semibold">{name}</div>
                 <div className="text-muted small">
                   @{u.username}
@@ -406,9 +487,18 @@ const StudentsList = ({ students, teachers, navigate }) => {
                   )}
                 </div>
               </div>
-              <span className="text-muted" aria-hidden>›</span>
+              {!isTeacher && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-danger rounded-pill px-2"
+                  title="Убрать из группы"
+                  onClick={() => onRemoveStudent(u.id)}
+                >
+                  ✕
+                </button>
+              )}
             </div>
-          </button>
+          </div>
         );
       })}
     </div>
