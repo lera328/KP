@@ -31,7 +31,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (identifier, password) => {
-    setLoading(true);
     setError(null);
     try {
       const response = await api.login(identifier, password);
@@ -46,8 +45,6 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       setError(err.message);
       throw err;
-    } finally {
-      setLoading(false);
     }
   };
 

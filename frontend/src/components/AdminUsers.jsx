@@ -202,10 +202,6 @@ export const AdminUsers = () => {
       return;
     }
 
-    if (createForm.role === 'student' && !createForm.group_id) {
-      setError('Для ученика нужно выбрать группу.');
-      return;
-    }
 
     setSavingCreate(true);
     try {
@@ -218,7 +214,7 @@ export const AdminUsers = () => {
         phone: createForm.phone.trim(),
         telegram_chat_id: createForm.telegram_chat_id.trim(),
         roles: [createForm.role],
-        group_ids: createForm.role === 'student' ? [Number(createForm.group_id)] : [],
+        group_ids: createForm.role === 'student' && createForm.group_id ? [Number(createForm.group_id)] : [],
       });
 
       setSuccess('Пользователь успешно создан.');
@@ -293,10 +289,6 @@ export const AdminUsers = () => {
       return;
     }
 
-    if (editForm.role === 'student' && !editForm.group_id) {
-      setError('Для ученика нужно выбрать группу.');
-      return;
-    }
 
     setSavingEdit(true);
     try {
@@ -308,7 +300,7 @@ export const AdminUsers = () => {
         phone: editForm.phone.trim(),
         telegram_chat_id: editForm.telegram_chat_id.trim(),
         roles: [editForm.role],
-        group_ids: editForm.role === 'student' ? [Number(editForm.group_id)] : [],
+        group_ids: editForm.role === 'student' && editForm.group_id ? [Number(editForm.group_id)] : [],
       };
 
       if (editForm.password.trim()) {
@@ -863,7 +855,7 @@ export const AdminUsers = () => {
 
                     {createForm.role === 'student' ? (
                       <div className="mb-3">
-                        <label className="form-label">Группа ученика *</label>
+                        <label className="form-label">Группа ученика</label>
                         <select
                           className="form-select"
                           name="group_id"
@@ -1028,7 +1020,7 @@ export const AdminUsers = () => {
 
                     {editForm.role === 'student' ? (
                       <div className="mb-3">
-                        <label className="form-label">Группа ученика *</label>
+                        <label className="form-label">Группа ученика</label>
                         <select
                           className="form-select"
                           name="group_id"

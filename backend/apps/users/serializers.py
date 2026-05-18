@@ -89,9 +89,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
                     {"phone": "Для родителя номер телефона обязателен."}
                 )
 
-        if is_student:
+        if is_student and group_ids:
             if len(group_ids) != 1:
-                raise serializers.ValidationError({"group_ids": "Ученик должен быть прикреплен ровно к одной группе."})
+                raise serializers.ValidationError({"group_ids": "Ученик может быть прикреплён максимум к одной группе."})
 
             existing_group_ids = set(Group.objects.filter(id__in=group_ids).values_list("id", flat=True))
             missing_group_ids = [group_id for group_id in group_ids if group_id not in existing_group_ids]
@@ -113,7 +113,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
         if any(role.code == Role.Code.STUDENT for role in roles):
             StudentProfile.objects.get_or_create(user=user)
-            GroupStudent.objects.get_or_create(group_id=group_ids[0], user=user)
+            if group_ids:
+                GroupStudent.objects.get_or_create(group_id=group_ids[0], user=user)
         if any(role.code == Role.Code.PARENT for role in roles):
             ParentProfile.objects.get_or_create(user=user)
 
@@ -177,8 +178,8 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         if group_ids is None:
             group_ids = list(GroupStudent.objects.filter(user=self.instance).values_list("group_id", flat=True))
 
-        if is_student and len(group_ids) != 1:
-            raise serializers.ValidationError({"group_ids": "Ученик должен быть прикреплен ровно к одной группе."})
+        if is_student and group_ids and len(group_ids) != 1:
+            raise serializers.ValidationError({"group_ids": "Ученик может быть прикреплён максимум к одной группе."})
 
         if has_group_ids_in_payload:
             existing_group_ids = set(Group.objects.filter(id__in=group_ids).values_list("id", flat=True))
@@ -223,7 +224,8 @@ class UserUpdateSerializer(serializers.ModelSerializer):
                     )
 
                 GroupStudent.objects.filter(user=instance).exclude(group_id__in=target_group_ids).delete()
-                GroupStudent.objects.get_or_create(group_id=target_group_ids[0], user=instance)
+                if target_group_ids:
+                    GroupStudent.objects.get_or_create(group_id=target_group_ids[0], user=instance)
             else:
                 GroupStudent.objects.filter(user=instance).delete()
 
