@@ -37,6 +37,7 @@ User = get_user_model()
 class UserProfileSerializer(serializers.ModelSerializer):
     roles = serializers.SlugRelatedField(slug_field="code", many=True, read_only=True)
     children = serializers.SerializerMethodField(read_only=True)
+    parent_id = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
@@ -52,6 +53,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "is_superuser",
             "must_change_password",
             "children",
+            "parent_id",
         ]
 
     def get_children(self, obj):
@@ -60,11 +62,19 @@ class UserProfileSerializer(serializers.ModelSerializer):
             return []
         return list(parent_profile.students.values_list("user_id", flat=True))
 
+    def get_parent_id(self, obj):
+        student_profile = getattr(obj, "student_profile", None)
+        if not student_profile:
+            return None
+        parent = student_profile.parents.first()
+        return parent.user_id if parent else None
+
 
 class UserCreateSerializer(serializers.ModelSerializer):
     roles = serializers.ListField(child=serializers.ChoiceField(choices=Role.Code.values), write_only=True)
     group_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
     child_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
+    parent_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     password = serializers.CharField(write_only=True, min_length=8)
 
     class Meta:
@@ -80,6 +90,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "roles",
             "group_ids",
             "child_ids",
+            "parent_id",
         ]
 
     def validate(self, attrs):
@@ -113,6 +124,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         role_codes = validated_data.pop("roles", [])
         group_ids = validated_data.pop("group_ids", [])
+        child_ids = validated_data.pop("child_ids", [])
+        parent_id = validated_data.pop("parent_id", None)
         password = validated_data.pop("password")
         user = User(**validated_data)
         user.set_password(password)
@@ -122,12 +135,15 @@ class UserCreateSerializer(serializers.ModelSerializer):
         user.roles.set(roles)
 
         if any(role.code == Role.Code.STUDENT for role in roles):
-            StudentProfile.objects.get_or_create(user=user)
+            student_profile, _ = StudentProfile.objects.get_or_create(user=user)
             if group_ids:
                 GroupStudent.objects.get_or_create(group_id=group_ids[0], user=user)
+            if parent_id:
+                pp = ParentProfile.objects.filter(user_id=parent_id).first()
+                if pp:
+                    pp.students.add(student_profile)
         if any(role.code == Role.Code.PARENT for role in roles):
             parent_profile, _ = ParentProfile.objects.get_or_create(user=user)
-            child_ids = validated_data.pop("child_ids", [])
             if child_ids:
                 student_profiles = StudentProfile.objects.filter(user_id__in=child_ids)
                 parent_profile.students.set(student_profiles)
@@ -143,6 +159,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     )
     group_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
     child_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
+    parent_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     password = serializers.CharField(write_only=True, min_length=8, required=False)
 
     class Meta:
@@ -158,6 +175,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "roles",
             "group_ids",
             "child_ids",
+            "parent_id",
         ]
         extra_kwargs = {
             "username": {"required": False},
@@ -208,6 +226,8 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         role_codes = validated_data.pop("roles", None)
         group_ids = validated_data.pop("group_ids", None)
+        child_ids = validated_data.pop("child_ids", None)
+        parent_id = validated_data.pop("parent_id", None)
         password = validated_data.pop("password", None)
 
         for attr, value in validated_data.items():
@@ -227,10 +247,16 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         is_parent = Role.Code.PARENT in current_role_codes
 
         if is_student:
-            StudentProfile.objects.get_or_create(user=instance)
+            student_profile, _ = StudentProfile.objects.get_or_create(user=instance)
+            if parent_id is not None:
+                for pp in ParentProfile.objects.filter(students=student_profile):
+                    pp.students.remove(student_profile)
+                if parent_id:
+                    pp = ParentProfile.objects.filter(user_id=parent_id).first()
+                    if pp:
+                        pp.students.add(student_profile)
         if is_parent:
             parent_profile, _ = ParentProfile.objects.get_or_create(user=instance)
-            child_ids = validated_data.pop("child_ids", None)
             if child_ids is not None:
                 student_profiles = StudentProfile.objects.filter(user_id__in=child_ids)
                 parent_profile.students.set(student_profiles)

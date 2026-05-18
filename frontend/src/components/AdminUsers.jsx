@@ -45,6 +45,7 @@ const CREATE_FORM_INITIAL = {
   role: 'student',
   group_id: '',
   child_ids: [],
+  parent_id: '',
 };
 
 const EDIT_FORM_INITIAL = {
@@ -58,6 +59,7 @@ const EDIT_FORM_INITIAL = {
   role: '',
   group_id: '',
   child_ids: [],
+  parent_id: '',
 };
 
 export const AdminUsers = () => {
@@ -110,6 +112,11 @@ export const AdminUsers = () => {
 
   const studentUsers = useMemo(
     () => users.filter((u) => isRole(u, 'student')),
+    [users],
+  );
+
+  const parentUsers = useMemo(
+    () => users.filter((u) => isRole(u, 'parent')),
     [users],
   );
 
@@ -223,6 +230,7 @@ export const AdminUsers = () => {
         roles: [createForm.role],
         group_ids: createForm.role === 'student' && createForm.group_id ? [Number(createForm.group_id)] : [],
         child_ids: createForm.role === 'parent' ? createForm.child_ids : [],
+        parent_id: createForm.role === 'student' && createForm.parent_id ? Number(createForm.parent_id) : null,
       });
 
       setSuccess('Пользователь успешно создан.');
@@ -253,6 +261,7 @@ export const AdminUsers = () => {
       role: roleCode,
       group_id: studentGroupIds[0] ? String(studentGroupIds[0]) : '',
       child_ids: Array.isArray(targetUser.children) ? targetUser.children : [],
+      parent_id: targetUser.parent_id ? String(targetUser.parent_id) : '',
     });
     setEditingUser(targetUser);
     setError('');
@@ -311,6 +320,7 @@ export const AdminUsers = () => {
         roles: [editForm.role],
         group_ids: editForm.role === 'student' && editForm.group_id ? [Number(editForm.group_id)] : [],
         child_ids: editForm.role === 'parent' ? editForm.child_ids : [],
+        parent_id: editForm.role === 'student' ? (editForm.parent_id ? Number(editForm.parent_id) : 0) : null,
       };
 
       if (editForm.password.trim()) {
@@ -864,53 +874,65 @@ export const AdminUsers = () => {
                     </div>
 
                     {createForm.role === 'student' ? (
-                      <div className="mb-3">
-                        <label className="form-label">Группа ученика</label>
-                        <select
-                          className="form-select"
-                          name="group_id"
-                          value={createForm.group_id}
-                          onChange={updateCreateField}
-                          disabled={savingCreate}
-                        >
-                          <option value="">Выберите группу</option>
-                          {groups.map((group) => (
-                            <option key={`create-group-${group.id}`} value={group.id}>
-                              {group.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <>
+                        <div className="mb-3">
+                          <label className="form-label">Группа ученика</label>
+                          <select
+                            className="form-select"
+                            name="group_id"
+                            value={createForm.group_id}
+                            onChange={updateCreateField}
+                            disabled={savingCreate}
+                          >
+                            <option value="">Выберите группу</option>
+                            {groups.map((group) => (
+                              <option key={`create-group-${group.id}`} value={group.id}>
+                                {group.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="mb-3">
+                          <label className="form-label">Родитель</label>
+                          <select
+                            className="form-select"
+                            name="parent_id"
+                            value={createForm.parent_id}
+                            onChange={updateCreateField}
+                            disabled={savingCreate}
+                          >
+                            <option value="">— не выбран —</option>
+                            {parentUsers.map((p) => (
+                              <option key={`create-parent-${p.id}`} value={p.id}>
+                                {`${p.first_name || ''} ${p.last_name || ''}`.trim() || p.username}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
                     ) : null}
 
                     {createForm.role === 'parent' ? (
                       <div className="mb-3">
                         <label className="form-label">Дети (ученики)</label>
-                        <div className="border rounded p-2" style={{ maxHeight: '160px', overflow: 'auto' }}>
-                          {studentUsers.length === 0 ? (
-                            <div className="text-muted small">Ученики не найдены.</div>
-                          ) : (
-                            studentUsers.map((s) => (
-                              <label className="form-check d-block" key={s.id}>
-                                <input
-                                  type="checkbox"
-                                  className="form-check-input"
-                                  checked={createForm.child_ids.includes(s.id)}
-                                  onChange={() => setCreateForm((prev) => ({
-                                    ...prev,
-                                    child_ids: prev.child_ids.includes(s.id)
-                                      ? prev.child_ids.filter((id) => id !== s.id)
-                                      : [...prev.child_ids, s.id],
-                                  }))}
-                                  disabled={savingCreate}
-                                />
-                                <span className="form-check-label">
-                                  {`${s.first_name || ''} ${s.last_name || ''}`.trim() || s.username}
-                                </span>
-                              </label>
-                            ))
-                          )}
-                        </div>
+                        <select
+                          className="form-select"
+                          multiple
+                          value={createForm.child_ids.map(String)}
+                          onChange={(e) => {
+                            const selected = Array.from(e.target.selectedOptions, (opt) => Number(opt.value));
+                            setCreateForm((prev) => ({ ...prev, child_ids: selected }));
+                          }}
+                          disabled={savingCreate}
+                          style={{ minHeight: '120px' }}
+                        >
+                          {studentUsers.map((s) => (
+                            <option key={`create-child-${s.id}`} value={s.id}>
+                              {`${s.first_name || ''} ${s.last_name || ''}`.trim() || s.username}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="form-text">Удерживайте Ctrl для выбора нескольких учеников.</div>
                       </div>
                     ) : null}
                   </div>
@@ -1060,53 +1082,65 @@ export const AdminUsers = () => {
                     </div>
 
                     {editForm.role === 'student' ? (
-                      <div className="mb-3">
-                        <label className="form-label">Группа ученика</label>
-                        <select
-                          className="form-select"
-                          name="group_id"
-                          value={editForm.group_id}
-                          onChange={updateEditField}
-                          disabled={savingEdit}
-                        >
-                          <option value="">Выберите группу</option>
-                          {groups.map((group) => (
-                            <option key={`edit-group-${group.id}`} value={group.id}>
-                              {group.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <>
+                        <div className="mb-3">
+                          <label className="form-label">Группа ученика</label>
+                          <select
+                            className="form-select"
+                            name="group_id"
+                            value={editForm.group_id}
+                            onChange={updateEditField}
+                            disabled={savingEdit}
+                          >
+                            <option value="">Выберите группу</option>
+                            {groups.map((group) => (
+                              <option key={`edit-group-${group.id}`} value={group.id}>
+                                {group.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="mb-3">
+                          <label className="form-label">Родитель</label>
+                          <select
+                            className="form-select"
+                            name="parent_id"
+                            value={editForm.parent_id}
+                            onChange={updateEditField}
+                            disabled={savingEdit}
+                          >
+                            <option value="">— не выбран —</option>
+                            {parentUsers.map((p) => (
+                              <option key={`edit-parent-${p.id}`} value={p.id}>
+                                {`${p.first_name || ''} ${p.last_name || ''}`.trim() || p.username}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
                     ) : null}
 
                     {editForm.role === 'parent' ? (
                       <div className="mb-3">
                         <label className="form-label">Дети (ученики)</label>
-                        <div className="border rounded p-2" style={{ maxHeight: '160px', overflow: 'auto' }}>
-                          {studentUsers.length === 0 ? (
-                            <div className="text-muted small">Ученики не найдены.</div>
-                          ) : (
-                            studentUsers.map((s) => (
-                              <label className="form-check d-block" key={s.id}>
-                                <input
-                                  type="checkbox"
-                                  className="form-check-input"
-                                  checked={editForm.child_ids.includes(s.id)}
-                                  onChange={() => setEditForm((prev) => ({
-                                    ...prev,
-                                    child_ids: prev.child_ids.includes(s.id)
-                                      ? prev.child_ids.filter((id) => id !== s.id)
-                                      : [...prev.child_ids, s.id],
-                                  }))}
-                                  disabled={savingEdit}
-                                />
-                                <span className="form-check-label">
-                                  {`${s.first_name || ''} ${s.last_name || ''}`.trim() || s.username}
-                                </span>
-                              </label>
-                            ))
-                          )}
-                        </div>
+                        <select
+                          className="form-select"
+                          multiple
+                          value={editForm.child_ids.map(String)}
+                          onChange={(e) => {
+                            const selected = Array.from(e.target.selectedOptions, (opt) => Number(opt.value));
+                            setEditForm((prev) => ({ ...prev, child_ids: selected }));
+                          }}
+                          disabled={savingEdit}
+                          style={{ minHeight: '120px' }}
+                        >
+                          {studentUsers.map((s) => (
+                            <option key={`edit-child-${s.id}`} value={s.id}>
+                              {`${s.first_name || ''} ${s.last_name || ''}`.trim() || s.username}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="form-text">Удерживайте Ctrl для выбора нескольких учеников.</div>
                       </div>
                     ) : null}
                   </div>
