@@ -7,7 +7,7 @@ from apps.core.views import health_check
 from apps.users.views import public_portfolio_view
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path("django-admin/", admin.site.urls),
     path("api/health/", health_check, name="health-check"),
     path("api/auth/", include("apps.users.urls")),
     path("api/", include("apps.courses.urls")),
