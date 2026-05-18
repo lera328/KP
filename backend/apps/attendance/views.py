@@ -635,10 +635,10 @@ def update_makeup_slots_view(request):
 
 
 def _get_or_create_placeholder_topic(group):
-    topic = LessonTopic.objects.filter(course=group.course, title="Тема задаётся преподавателем").first()
+    topic = LessonTopic.objects.filter(title="Тема задаётся преподавателем").first()
     if topic:
         return topic
-    return LessonTopic.objects.create(course=group.course, title="Тема задаётся преподавателем")
+    return LessonTopic.objects.create(course=None, title="Тема задаётся преподавателем")
 
 
 @api_view(["POST"])
