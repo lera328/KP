@@ -196,7 +196,6 @@ export const Portfolio = ({ mode = 'student' }) => {
                 {data.groups.map((g, idx) => (
                   <li key={`${g.name}-${idx}`} className="list-group-item d-flex justify-content-between border-0" style={kid ? { background: 'transparent' } : undefined}>
                     <span>{g.name}</span>
-                    <span className="text-muted">{g.course_title}</span>
                   </li>
                 ))}
               </ul>

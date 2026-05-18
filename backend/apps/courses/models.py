@@ -26,7 +26,7 @@ class Course(models.Model):
 
 class Group(models.Model):
     name = models.CharField(max_length=255)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="groups")
+    course = models.ForeignKey(Course, on_delete=models.SET_NULL, null=True, blank=True, related_name="groups")
     weekly_lesson_weekday = models.PositiveSmallIntegerField(null=True, blank=True)
     weekly_lesson_time = models.TimeField(null=True, blank=True)
     students = models.ManyToManyField(

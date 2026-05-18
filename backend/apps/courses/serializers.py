@@ -33,7 +33,6 @@ class GroupSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
-            "course",
             "is_active",
             "weekly_lesson_weekday",
             "weekly_lesson_time",

@@ -85,7 +85,6 @@ const SearchableMultiSelect = ({
 
 export const AdminGroups = () => {
   const navigate = useNavigate();
-  const [courses, setCourses] = useState([]);
   const [groups, setGroups] = useState([]);
   const [users, setUsers] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -109,7 +108,6 @@ export const AdminGroups = () => {
 
   const [groupForm, setGroupForm] = useState({
     name: '',
-    course: '',
     location: '',
     is_active: true,
     teacher_ids: [],
@@ -145,21 +143,18 @@ export const AdminGroups = () => {
     setLoading(true);
     setError('');
     try {
-      const [coursesData, groupsData, usersData, locationsData, topicsData] = await Promise.all([
-        api.getCourses(),
+      const [groupsData, usersData, locationsData, topicsData] = await Promise.all([
         api.getGroups(),
         api.getUsers(),
         api.getLocations(),
         api.getLessonTopics(),
       ]);
 
-      const safeCourses = Array.isArray(coursesData) ? coursesData : [];
       const safeGroups = Array.isArray(groupsData) ? groupsData : [];
       const safeUsers = Array.isArray(usersData) ? usersData : [];
       const safeLocations = Array.isArray(locationsData) ? locationsData : [];
       const safeTopics = Array.isArray(topicsData) ? topicsData : [];
 
-      setCourses(safeCourses);
       setGroups(safeGroups);
       setUsers(safeUsers);
       setLocations(safeLocations);
@@ -167,7 +162,6 @@ export const AdminGroups = () => {
 
       setGroupForm((prev) => ({
         ...prev,
-        course: prev.course || safeCourses[0]?.id || '',
         location: prev.location || safeLocations[0]?.id || '',
       }));
     } catch (loadError) {
@@ -219,10 +213,6 @@ export const AdminGroups = () => {
       return;
     }
 
-    if (!groupForm.course) {
-      setError('Не удалось создать группу: отсутствует системная настройка.');
-      return;
-    }
 
     if (!groupForm.location) {
       setError('Выберите локацию группы.');
@@ -233,7 +223,6 @@ export const AdminGroups = () => {
     try {
       await api.createGroup({
         name: groupForm.name.trim(),
-        course: Number(groupForm.course),
         location: Number(groupForm.location),
         is_active: groupForm.is_active,
         teacher_ids: groupForm.teacher_ids,

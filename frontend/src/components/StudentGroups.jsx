@@ -50,7 +50,6 @@ export const StudentGroups = () => {
                   <thead>
                     <tr>
                       <th>Группа</th>
-                      <th>Курс ID</th>
                       <th>Статус</th>
                     </tr>
                   </thead>
@@ -58,7 +57,6 @@ export const StudentGroups = () => {
                     {groups.map((group) => (
                       <tr key={group.id}>
                         <td>{group.name || `Группа #${group.id}`}</td>
-                        <td>{group.course || '-'}</td>
                         <td>{group.is_active ? 'Активна' : 'Неактивна'}</td>
                       </tr>
                     ))}

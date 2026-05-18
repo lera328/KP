@@ -120,10 +120,10 @@ def build_portfolio_context(student: User, request: HttpRequest = None) -> dict:
 
     groups = list(
         GroupStudent.objects.filter(user=student)
-        .select_related("group", "group__course")
-        .values_list("group__name", "group__course__name")
+        .select_related("group")
+        .values_list("group__name", flat=True)
     )
-    groups_data = [{"name": name, "course_title": course or "—"} for name, course in groups]
+    groups_data = [{"name": name} for name in groups]
 
     attended_qs = (
         AttendanceRecord.objects.filter(
