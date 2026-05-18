@@ -18,7 +18,9 @@ const initials = (u) => ((u.first_name?.[0] || '') + (u.last_name?.[0] || '')).t
 const TABS = [
   { key: 'students', label: 'Ученики' },
   { key: 'schedule', label: 'Расписание' },
+  { key: 'planning', label: 'Планирование' },
   { key: 'comments', label: 'Заметки' },
+  { key: 'danger', label: 'Удаление' },
 ];
 
 export const AdminGroupDetail = () => {
@@ -35,19 +37,39 @@ export const AdminGroupDetail = () => {
   const [commentText, setCommentText] = useState('');
   const [savingComment, setSavingComment] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState(null);
+  const [teachers, setTeachers] = useState([]);
+
+  // Schedule setup
+  const [scheduleForm, setScheduleForm] = useState({ teacher: '', starts_at: '' });
+  const [savingSchedule, setSavingSchedule] = useState(false);
+
+  // Extra lesson
+  const [extraForm, setExtraForm] = useState({ teacher: '', starts_at: '' });
+  const [savingExtra, setSavingExtra] = useState(false);
+
+  // Delete group
+  const [deletingGroup, setDeletingGroup] = useState(false);
+  const [success, setSuccess] = useState('');
 
   const load = async () => {
     setLoading(true);
     setError('');
     try {
-      const [groupData, lessonsData, commentsData] = await Promise.all([
+      const [groupData, lessonsData, commentsData, usersData] = await Promise.all([
         api.getGroup(groupId),
         api.getLessons(),
         api.getGroupComments(groupId),
+        api.getUsers(),
       ]);
       setGroup(groupData);
       setLessons((Array.isArray(lessonsData) ? lessonsData : []).filter((l) => Number(l.group) === groupId));
       setComments(Array.isArray(commentsData) ? commentsData : []);
+      const allUsers = Array.isArray(usersData) ? usersData : [];
+      const teachersList = allUsers.filter((u) => Array.isArray(u.roles) && u.roles.includes('teacher'));
+      setTeachers(teachersList);
+      const defaultTeacher = groupData?.teachers?.[0]?.id ? String(groupData.teachers[0].id) : '';
+      setScheduleForm((p) => ({ ...p, teacher: p.teacher || defaultTeacher }));
+      setExtraForm((p) => ({ ...p, teacher: p.teacher || defaultTeacher }));
     } catch (loadError) {
       setError(loadError.message || 'Не удалось загрузить данные группы.');
     } finally {
@@ -75,6 +97,67 @@ export const AdminGroupDetail = () => {
   }, [lessons, now]);
 
   const conductedCount = pastLessons.filter((l) => l.conducted_topic).length;
+
+  const handleSetupSchedule = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    if (!scheduleForm.teacher || !scheduleForm.starts_at) {
+      setError('Заполните преподавателя и стартовое время.');
+      return;
+    }
+    setSavingSchedule(true);
+    try {
+      const result = await api.setupGroupSchedule({
+        group_id: groupId,
+        teacher_id: Number(scheduleForm.teacher),
+        starts_at: new Date(scheduleForm.starts_at).toISOString(),
+      });
+      setSuccess(`Расписание настроено. Создано занятий: ${result?.created_count || 0}.`);
+      await load();
+    } catch (err) {
+      setError(err.message || 'Не удалось настроить расписание.');
+    } finally {
+      setSavingSchedule(false);
+    }
+  };
+
+  const handleAddExtra = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    if (!extraForm.teacher || !extraForm.starts_at) {
+      setError('Заполните преподавателя и дату/время.');
+      return;
+    }
+    setSavingExtra(true);
+    try {
+      await api.addExtraLesson({
+        group_id: groupId,
+        teacher_id: Number(extraForm.teacher),
+        starts_at: new Date(extraForm.starts_at).toISOString(),
+      });
+      setSuccess('Разовое занятие добавлено.');
+      await load();
+    } catch (err) {
+      setError(err.message || 'Не удалось добавить занятие.');
+    } finally {
+      setSavingExtra(false);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!window.confirm(`Удалить группу «${group?.name}» вместе со всеми уроками? Это действие необратимо.`)) return;
+    setDeletingGroup(true);
+    setError('');
+    try {
+      await api.deleteGroup(groupId);
+      navigate('/admin/groups');
+    } catch (err) {
+      setError(err.message || 'Не удалось удалить группу.');
+      setDeletingGroup(false);
+    }
+  };
 
   const handleAddComment = async (e) => {
     e.preventDefault();
@@ -107,6 +190,7 @@ export const AdminGroupDetail = () => {
       <button type="button" className="btn btn-link text-decoration-none px-0 mb-2" onClick={() => navigate(-1)}>← Назад</button>
 
       {error && <div className="alert alert-danger rounded-3">{error}</div>}
+      {success && <div className="alert alert-success rounded-3">{success}</div>}
 
       {loading || !group ? (
         <div className="kid-skeleton" style={{ height: 120, borderRadius: 16 }} />
@@ -176,6 +260,64 @@ export const AdminGroupDetail = () => {
             <ScheduleList upcoming={upcomingLessons} past={pastLessons} onLessonClick={(l) => setSelectedLesson(l)} />
           )}
 
+          {tab === 'planning' && (
+            <div className="d-flex flex-column gap-3">
+              <div className="card border-0 shadow-sm rounded-4">
+                <div className="card-body p-4">
+                  <h6 className="fw-semibold mb-1">Настроить регулярное расписание</h6>
+                  <p className="text-muted small mb-3">
+                    Создаст еженедельные уроки на год вперёд по выбранному дню недели и времени. Слот группы автоматически обновится.
+                  </p>
+                  <form onSubmit={handleSetupSchedule} className="row g-3">
+                    <div className="col-md-5">
+                      <label className="form-label">Преподаватель</label>
+                      <select className="form-select" value={scheduleForm.teacher} onChange={(e) => setScheduleForm((p) => ({ ...p, teacher: e.target.value }))} disabled={savingSchedule}>
+                        <option value="">— выберите —</option>
+                        {teachers.map((t) => <option key={t.id} value={t.id}>{fullName(t)}</option>)}
+                      </select>
+                    </div>
+                    <div className="col-md-5">
+                      <label className="form-label">Стартовое занятие</label>
+                      <input type="datetime-local" className="form-control" value={scheduleForm.starts_at} onChange={(e) => setScheduleForm((p) => ({ ...p, starts_at: e.target.value }))} disabled={savingSchedule} />
+                    </div>
+                    <div className="col-md-2 d-flex align-items-end">
+                      <button type="submit" className="btn btn-dark rounded-pill w-100" disabled={savingSchedule}>
+                        {savingSchedule ? '...' : 'Прописать'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <div className="card border-0 shadow-sm rounded-4">
+                <div className="card-body p-4">
+                  <h6 className="fw-semibold mb-3">Добавить разовое занятие</h6>
+                  <form onSubmit={handleAddExtra} className="row g-3">
+                    <div className="col-md-5">
+                      <label className="form-label">Преподаватель</label>
+                      <select className="form-select" value={extraForm.teacher} onChange={(e) => setExtraForm((p) => ({ ...p, teacher: e.target.value }))} disabled={savingExtra}>
+                        <option value="">— выберите —</option>
+                        {teachers.map((t) => <option key={t.id} value={t.id}>{fullName(t)}</option>)}
+                      </select>
+                    </div>
+                    <div className="col-md-5">
+                      <label className="form-label">Дата и время</label>
+                      <input type="datetime-local" className="form-control" value={extraForm.starts_at} onChange={(e) => setExtraForm((p) => ({ ...p, starts_at: e.target.value }))} disabled={savingExtra} />
+                    </div>
+                    <div className="col-md-2 d-flex align-items-end">
+                      <button type="submit" className="btn btn-dark rounded-pill w-100" disabled={savingExtra}>
+                        {savingExtra ? '...' : 'Добавить'}
+                      </button>
+                    </div>
+                    <div className="col-12">
+                      <div className="form-text">Система не даст занять уже занятый слот по локации/преподавателю.</div>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+
           {tab === 'comments' && (
             <CommentsList
               comments={comments}
@@ -185,6 +327,18 @@ export const AdminGroupDetail = () => {
               saving={savingComment}
               onDelete={handleDeleteComment}
             />
+          )}
+          {tab === 'danger' && (
+            <div className="card border-0 shadow-sm rounded-4">
+              <div className="card-body p-4">
+                <div className="alert alert-warning mb-3">
+                  Удаление группы навсегда уберёт её, все уроки и записи посещаемости.
+                </div>
+                <button className="btn btn-danger rounded-pill px-4" onClick={handleDeleteGroup} disabled={deletingGroup}>
+                  {deletingGroup ? 'Удаляем...' : 'Удалить группу'}
+                </button>
+              </div>
+            </div>
           )}
         </>
       )}
