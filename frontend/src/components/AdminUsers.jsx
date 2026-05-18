@@ -44,6 +44,7 @@ const CREATE_FORM_INITIAL = {
   telegram_chat_id: '',
   role: 'student',
   group_id: '',
+  child_ids: [],
 };
 
 const EDIT_FORM_INITIAL = {
@@ -56,6 +57,7 @@ const EDIT_FORM_INITIAL = {
   telegram_chat_id: '',
   role: '',
   group_id: '',
+  child_ids: [],
 };
 
 export const AdminUsers = () => {
@@ -103,6 +105,11 @@ export const AdminUsers = () => {
       parents: users.filter((userItem) => isRole(userItem, 'parent')),
       students: users.filter((userItem) => isRole(userItem, 'student')),
     }),
+    [users],
+  );
+
+  const studentUsers = useMemo(
+    () => users.filter((u) => isRole(u, 'student')),
     [users],
   );
 
@@ -215,6 +222,7 @@ export const AdminUsers = () => {
         telegram_chat_id: createForm.telegram_chat_id.trim(),
         roles: [createForm.role],
         group_ids: createForm.role === 'student' && createForm.group_id ? [Number(createForm.group_id)] : [],
+        child_ids: createForm.role === 'parent' ? createForm.child_ids : [],
       });
 
       setSuccess('Пользователь успешно создан.');
@@ -244,6 +252,7 @@ export const AdminUsers = () => {
       telegram_chat_id: targetUser.telegram_chat_id || '',
       role: roleCode,
       group_id: studentGroupIds[0] ? String(studentGroupIds[0]) : '',
+      child_ids: Array.isArray(targetUser.children) ? targetUser.children : [],
     });
     setEditingUser(targetUser);
     setError('');
@@ -301,6 +310,7 @@ export const AdminUsers = () => {
         telegram_chat_id: editForm.telegram_chat_id.trim(),
         roles: [editForm.role],
         group_ids: editForm.role === 'student' && editForm.group_id ? [Number(editForm.group_id)] : [],
+        child_ids: editForm.role === 'parent' ? editForm.child_ids : [],
       };
 
       if (editForm.password.trim()) {
@@ -872,6 +882,37 @@ export const AdminUsers = () => {
                         </select>
                       </div>
                     ) : null}
+
+                    {createForm.role === 'parent' ? (
+                      <div className="mb-3">
+                        <label className="form-label">Дети (ученики)</label>
+                        <div className="border rounded p-2" style={{ maxHeight: '160px', overflow: 'auto' }}>
+                          {studentUsers.length === 0 ? (
+                            <div className="text-muted small">Ученики не найдены.</div>
+                          ) : (
+                            studentUsers.map((s) => (
+                              <label className="form-check d-block" key={s.id}>
+                                <input
+                                  type="checkbox"
+                                  className="form-check-input"
+                                  checked={createForm.child_ids.includes(s.id)}
+                                  onChange={() => setCreateForm((prev) => ({
+                                    ...prev,
+                                    child_ids: prev.child_ids.includes(s.id)
+                                      ? prev.child_ids.filter((id) => id !== s.id)
+                                      : [...prev.child_ids, s.id],
+                                  }))}
+                                  disabled={savingCreate}
+                                />
+                                <span className="form-check-label">
+                                  {`${s.first_name || ''} ${s.last_name || ''}`.trim() || s.username}
+                                </span>
+                              </label>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="modal-footer border-0">
                     <button type="button" className="btn btn-light border rounded-pill px-4" onClick={closeCreateModal} disabled={savingCreate}>
@@ -1035,6 +1076,37 @@ export const AdminUsers = () => {
                             </option>
                           ))}
                         </select>
+                      </div>
+                    ) : null}
+
+                    {editForm.role === 'parent' ? (
+                      <div className="mb-3">
+                        <label className="form-label">Дети (ученики)</label>
+                        <div className="border rounded p-2" style={{ maxHeight: '160px', overflow: 'auto' }}>
+                          {studentUsers.length === 0 ? (
+                            <div className="text-muted small">Ученики не найдены.</div>
+                          ) : (
+                            studentUsers.map((s) => (
+                              <label className="form-check d-block" key={s.id}>
+                                <input
+                                  type="checkbox"
+                                  className="form-check-input"
+                                  checked={editForm.child_ids.includes(s.id)}
+                                  onChange={() => setEditForm((prev) => ({
+                                    ...prev,
+                                    child_ids: prev.child_ids.includes(s.id)
+                                      ? prev.child_ids.filter((id) => id !== s.id)
+                                      : [...prev.child_ids, s.id],
+                                  }))}
+                                  disabled={savingEdit}
+                                />
+                                <span className="form-check-label">
+                                  {`${s.first_name || ''} ${s.last_name || ''}`.trim() || s.username}
+                                </span>
+                              </label>
+                            ))
+                          )}
+                        </div>
                       </div>
                     ) : null}
                   </div>

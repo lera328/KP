@@ -36,6 +36,7 @@ User = get_user_model()
 
 class UserProfileSerializer(serializers.ModelSerializer):
     roles = serializers.SlugRelatedField(slug_field="code", many=True, read_only=True)
+    children = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
@@ -50,12 +51,20 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "roles",
             "is_superuser",
             "must_change_password",
+            "children",
         ]
+
+    def get_children(self, obj):
+        parent_profile = getattr(obj, "parent_profile", None)
+        if not parent_profile:
+            return []
+        return list(parent_profile.students.values_list("user_id", flat=True))
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
     roles = serializers.ListField(child=serializers.ChoiceField(choices=Role.Code.values), write_only=True)
     group_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
+    child_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
     password = serializers.CharField(write_only=True, min_length=8)
 
     class Meta:
@@ -70,6 +79,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "telegram_chat_id",
             "roles",
             "group_ids",
+            "child_ids",
         ]
 
     def validate(self, attrs):
@@ -116,7 +126,11 @@ class UserCreateSerializer(serializers.ModelSerializer):
             if group_ids:
                 GroupStudent.objects.get_or_create(group_id=group_ids[0], user=user)
         if any(role.code == Role.Code.PARENT for role in roles):
-            ParentProfile.objects.get_or_create(user=user)
+            parent_profile, _ = ParentProfile.objects.get_or_create(user=user)
+            child_ids = validated_data.pop("child_ids", [])
+            if child_ids:
+                student_profiles = StudentProfile.objects.filter(user_id__in=child_ids)
+                parent_profile.students.set(student_profiles)
 
         return user
 
@@ -128,6 +142,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         required=False,
     )
     group_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
+    child_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
     password = serializers.CharField(write_only=True, min_length=8, required=False)
 
     class Meta:
@@ -142,6 +157,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "telegram_chat_id",
             "roles",
             "group_ids",
+            "child_ids",
         ]
         extra_kwargs = {
             "username": {"required": False},
@@ -213,7 +229,11 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         if is_student:
             StudentProfile.objects.get_or_create(user=instance)
         if is_parent:
-            ParentProfile.objects.get_or_create(user=instance)
+            parent_profile, _ = ParentProfile.objects.get_or_create(user=instance)
+            child_ids = validated_data.pop("child_ids", None)
+            if child_ids is not None:
+                student_profiles = StudentProfile.objects.filter(user_id__in=child_ids)
+                parent_profile.students.set(student_profiles)
 
         if group_ids is not None or role_codes is not None:
             if is_student:
