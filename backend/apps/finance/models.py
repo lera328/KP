@@ -6,7 +6,7 @@ from django.db import models
 class Subscription(models.Model):
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="subscriptions")
     total_lessons = models.PositiveIntegerField(default=0)
-    remaining_lessons = models.PositiveIntegerField(default=0)
+    remaining_lessons = models.IntegerField(default=0)
     valid_from = models.DateField(null=True, blank=True)
     valid_until = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)

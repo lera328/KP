@@ -93,15 +93,22 @@ def charge_one_lesson(student_id: int) -> bool:
     # Fallback: legacy lesson-count подписка
     lesson_sub = (
         Subscription.objects.select_for_update()
-        .filter(student_id=student_id, is_active=True, remaining_lessons__gt=0, valid_from__isnull=True)
+        .filter(student_id=student_id, is_active=True, valid_from__isnull=True)
         .order_by("created_at")
         .first()
     )
     if lesson_sub:
         lesson_sub.remaining_lessons -= 1
         lesson_sub.save(update_fields=["remaining_lessons"])
-        return True
+        return lesson_sub.remaining_lessons >= 0
 
+    # Нет подписки — создаём с отрицательным балансом
+    sub = Subscription.objects.create(
+        student_id=student_id,
+        total_lessons=0,
+        remaining_lessons=-1,
+        is_active=True,
+    )
     return False
 
 

@@ -296,6 +296,7 @@ export const AdminGroupDetail = () => {
               onRemoveStudent={handleRemoveStudent}
               availableStudents={availableStudents}
               onAddStudent={handleAddStudent}
+              allStudents={allStudents}
             />
           )}
 
@@ -397,7 +398,7 @@ const KpiCard = ({ label, value }) => (
   </div>
 );
 
-const StudentsList = ({ students, teachers, navigate, onRemoveStudent, availableStudents, onAddStudent }) => {
+const StudentsList = ({ students, teachers, navigate, onRemoveStudent, availableStudents, onAddStudent, allStudents }) => {
   const [addQuery, setAddQuery] = useState('');
   const [addOpen, setAddOpen] = useState(false);
 
@@ -407,9 +408,15 @@ const StudentsList = ({ students, teachers, navigate, onRemoveStudent, available
     return availableStudents.filter((s) => fullName(s).toLowerCase().includes(q) || s.username.toLowerCase().includes(q));
   }, [availableStudents, addQuery]);
 
+  const balanceMap = useMemo(() => {
+    const m = {};
+    (allStudents || []).forEach((s) => { m[s.id] = s.balance; });
+    return m;
+  }, [allStudents]);
+
   const all = [
     ...teachers.map((t) => ({ ...t, _role: 'teacher' })),
-    ...students.map((s) => ({ ...s, _role: 'student' })),
+    ...students.map((s) => ({ ...s, _role: 'student', balance: balanceMap[s.id] })),
   ];
 
   return (
@@ -462,24 +469,26 @@ const StudentsList = ({ students, teachers, navigate, onRemoveStudent, available
         const name = fullName(u);
         const init = initials(u);
         const isTeacher = u._role === 'teacher';
+        const hasDebt = !isTeacher && u.balance !== null && u.balance !== undefined && u.balance < 0;
         return (
           <div
             key={`${u._role}-${u.id}`}
             className="card border-0 shadow-sm rounded-4"
+            style={hasDebt ? { border: '2px solid #ef4444', background: '#fef2f2' } : {}}
           >
             <div className="card-body p-3 d-flex align-items-center gap-3">
               <div
                 className="rounded-circle d-flex align-items-center justify-content-center fw-semibold flex-shrink-0"
                 style={{
                   width: 44, height: 44, fontSize: '0.95rem',
-                  background: isTeacher ? '#eff6ff' : '#eef2ff',
-                  color: isTeacher ? '#2563eb' : '#3730a3',
+                  background: hasDebt ? '#fee2e2' : isTeacher ? '#eff6ff' : '#eef2ff',
+                  color: hasDebt ? '#dc2626' : isTeacher ? '#2563eb' : '#3730a3',
                 }}
               >
                 {init || '👤'}
               </div>
               <div className="flex-grow-1" style={{ cursor: 'pointer' }} onClick={() => navigate(isTeacher ? `/admin/teachers/${u.id}` : `/admin/students/${u.id}`)}>
-                <div className="fw-semibold">{name}</div>
+                <div className="fw-semibold" style={hasDebt ? { color: '#dc2626' } : {}}>{name}</div>
                 <div className="text-muted small">
                   @{u.username}
                   {isTeacher && (
@@ -487,6 +496,11 @@ const StudentsList = ({ students, teachers, navigate, onRemoveStudent, available
                   )}
                 </div>
               </div>
+              {hasDebt && (
+                <span className="badge rounded-pill" style={{ background: '#fee2e2', color: '#dc2626', fontWeight: 600, fontSize: '0.75rem' }}>
+                  {u.balance}
+                </span>
+              )}
               {!isTeacher && (
                 <button
                   type="button"

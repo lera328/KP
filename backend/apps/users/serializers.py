@@ -38,6 +38,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     roles = serializers.SlugRelatedField(slug_field="code", many=True, read_only=True)
     children = serializers.SerializerMethodField(read_only=True)
     parent_id = serializers.SerializerMethodField(read_only=True)
+    balance = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
@@ -54,6 +55,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "must_change_password",
             "children",
             "parent_id",
+            "balance",
         ]
 
     def get_children(self, obj):
@@ -61,6 +63,13 @@ class UserProfileSerializer(serializers.ModelSerializer):
         if not parent_profile:
             return []
         return list(parent_profile.students.values_list("user_id", flat=True))
+
+    def get_balance(self, obj):
+        from apps.finance.models import Subscription
+        sub = Subscription.objects.filter(student=obj, is_active=True).first()
+        if not sub:
+            return None
+        return sub.remaining_lessons
 
     def get_parent_id(self, obj):
         student_profile = getattr(obj, "student_profile", None)

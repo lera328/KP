@@ -597,12 +597,13 @@ export const AdminUsers = () => {
             const isCurrentUser = currentUser?.id === row.id;
             const isDeleting = deletingUserId === row.id;
             const isResetting = resettingUserId === row.id;
+            const hasDebt = roleCode === 'student' && row.balance !== null && row.balance !== undefined && row.balance < 0;
 
             return (
               <div
                 key={row.id}
                 className="card border-0 shadow-sm rounded-4"
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: 'pointer', border: hasDebt ? '2px solid #ef4444' : undefined, background: hasDebt ? '#fef2f2' : undefined }}
                 onClick={() => openViewUser(row)}
               >
                 <div className="card-body p-3 d-flex flex-wrap align-items-center gap-3">
@@ -611,20 +612,25 @@ export const AdminUsers = () => {
                     style={{
                       width: 44,
                       height: 44,
-                      background: roleBadge.bg,
-                      color: roleBadge.color,
+                      background: hasDebt ? '#fee2e2' : roleBadge.bg,
+                      color: hasDebt ? '#dc2626' : roleBadge.color,
                       fontSize: '0.95rem',
                     }}
                   >
                     {getInitials(row)}
                   </div>
                   <div className="flex-grow-1" style={{ minWidth: 200 }}>
-                    <div className="fw-semibold">{displayName}</div>
+                    <div className="fw-semibold" style={{ color: hasDebt ? '#dc2626' : undefined }}>{displayName}</div>
                     <div className="text-muted small">
                       {row.username ? `@${row.username}` : `ID ${row.id}`}
                       {row.email ? ` · ${row.email}` : ''}
                     </div>
                   </div>
+                  {hasDebt && (
+                    <span className="badge rounded-pill" style={{ background: '#fee2e2', color: '#dc2626', fontWeight: 600, fontSize: '0.78rem' }}>
+                      Баланс: {row.balance}
+                    </span>
+                  )}
                   <span
                     className="badge rounded-pill"
                     style={{
