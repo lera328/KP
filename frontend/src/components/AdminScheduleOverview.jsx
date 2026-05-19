@@ -158,13 +158,13 @@ export const AdminScheduleOverview = ({ embedded = false }) => {
           <IconCalendar width={28} height={28} style={{ marginRight: 8, verticalAlign: -4 }} />
           Расписание
         </h1>
-        <div className="ms-auto d-flex gap-2 flex-wrap align-items-center">
+        <div className="ms-auto d-flex gap-2 align-items-center" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
           <select
             className="form-select form-select-sm rounded-pill"
             value={groupFilter}
             onChange={(e) => setGroupFilter(e.target.value)}
             disabled={loading}
-            style={{ minWidth: 140 }}
+            style={{ width: 'auto', minWidth: 110, flex: '0 0 auto' }}
           >
             <option value="">Все группы</option>
             {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -174,18 +174,18 @@ export const AdminScheduleOverview = ({ embedded = false }) => {
             value={teacherFilter}
             onChange={(e) => setTeacherFilter(e.target.value)}
             disabled={loading}
-            style={{ minWidth: 160 }}
+            style={{ width: 'auto', minWidth: 130, flex: '0 0 auto' }}
           >
             <option value="">Все преподаватели</option>
             {teachers.map((t) => <option key={t.id} value={t.id}>{teacherLabel(t)}</option>)}
           </select>
 
-          <div className="btn-group">
-            <button className="btn btn-light border rounded-start-pill px-3 btn-sm" onClick={() => navWeek(-1)} disabled={loading}>‹</button>
-            <button className="btn btn-light border px-3 btn-sm" onClick={() => setCurrentWeekStart(getWeekRange().monday)} disabled={loading}>Сегодня</button>
-            <button className="btn btn-light border rounded-end-pill px-3 btn-sm" onClick={() => navWeek(1)} disabled={loading}>›</button>
+          <div className="btn-group flex-shrink-0">
+            <button className="btn btn-light border rounded-start-pill px-2 btn-sm" onClick={() => navWeek(-1)} disabled={loading}>‹</button>
+            <button className="btn btn-light border px-2 btn-sm" onClick={() => setCurrentWeekStart(getWeekRange().monday)} disabled={loading}>Сегодня</button>
+            <button className="btn btn-light border rounded-end-pill px-2 btn-sm" onClick={() => navWeek(1)} disabled={loading}>›</button>
           </div>
-          <button className="btn btn-light border rounded-pill btn-sm px-3" onClick={loadData} disabled={loading}>
+          <button className="btn btn-light border rounded-pill btn-sm px-2 flex-shrink-0" onClick={loadData} disabled={loading}>
             <IconRefresh width={14} height={14} />
           </button>
         </div>
