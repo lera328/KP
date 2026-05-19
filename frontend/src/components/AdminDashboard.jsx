@@ -124,7 +124,7 @@ export const AdminDashboard = () => {
       {error && <div className="alert alert-danger rounded-3">{error}</div>}
 
       {/* Шапка приветствия */}
-      <div className="d-flex flex-wrap align-items-center gap-3 mb-4">
+      <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
         <div className="flex-grow-1">
           <div className="text-muted small">
             {new Date().toLocaleDateString('ru-RU', {
@@ -159,9 +159,9 @@ export const AdminDashboard = () => {
       </div>
 
       {/* KPI */}
-      <div className="row g-3 mb-4">
+      <div className="row g-2 mb-3">
         <KpiCard
-          icon={<IconUsers width={22} height={22} />}
+          icon={<IconUsers width={18} height={18} />}
           label="Активных учеников"
           value={kpi.students_total ?? '—'}
           accent="#111827"
@@ -170,7 +170,7 @@ export const AdminDashboard = () => {
           onClick={() => navigate('/admin/users')}
         />
         <KpiCard
-          icon={<IconLayers width={22} height={22} />}
+          icon={<IconLayers width={18} height={18} />}
           label="Групп"
           value={groupsCount}
           accent="#111827"
@@ -179,7 +179,7 @@ export const AdminDashboard = () => {
           onClick={() => navigate('/admin/groups')}
         />
         <KpiCard
-          icon={<IconCalendar width={22} height={22} />}
+          icon={<IconCalendar width={18} height={18} />}
           label="Занятий за месяц"
           value={kpi.lessons_count ?? '—'}
           accent="#111827"
@@ -187,7 +187,7 @@ export const AdminDashboard = () => {
           loading={loading}
         />
         <KpiCard
-          icon={<IconCheck width={22} height={22} />}
+          icon={<IconCheck width={18} height={18} />}
           label="Посещаемость"
           value={formatPercent(kpi.attendance_rate)}
           accent="#16a34a"
@@ -196,7 +196,7 @@ export const AdminDashboard = () => {
           hint={`Пропусков: ${kpi.absences ?? 0}`}
         />
         <KpiCard
-          icon={<IconWallet width={22} height={22} />}
+          icon={<IconWallet width={18} height={18} />}
           label="Выручка за месяц"
           value={formatMoney(kpi.revenue_total)}
           accent="#1d4ed8"
@@ -206,7 +206,7 @@ export const AdminDashboard = () => {
           onClick={() => navigate('/admin/finance')}
         />
         <KpiCard
-          icon={<IconAlert width={22} height={22} />}
+          icon={<IconAlert width={18} height={18} />}
           label="Высокий риск оттока"
           value={highRiskCount}
           accent={highRiskCount > 0 ? '#dc2626' : '#16a34a'}
@@ -217,12 +217,12 @@ export const AdminDashboard = () => {
       </div>
 
       {/* Требует внимания */}
-      <div className="row g-3 mb-4">
+      <div className="row g-2 mb-3">
         <div className="col-md-6">
           <ActionCard
             title="Отработки ожидают подтверждения"
             value={pendingMakeups}
-            icon={<IconClock width={20} height={20} />}
+            icon={<IconClock width={18} height={18} />}
             accent={pendingMakeups > 0 ? '#b45309' : '#6b7280'}
             bg={pendingMakeups > 0 ? '#fef3c7' : '#f8f9fb'}
             actionLabel="Перейти к отработкам"
@@ -233,7 +233,7 @@ export const AdminDashboard = () => {
           <ActionCard
             title="Платежей в ожидании"
             value={pendingPayments}
-            icon={<IconWallet width={20} height={20} />}
+            icon={<IconWallet width={18} height={18} />}
             accent={pendingPayments > 0 ? '#b45309' : '#6b7280'}
             bg={pendingPayments > 0 ? '#fef3c7' : '#f8f9fb'}
             actionLabel="Перейти к финансам"
@@ -243,7 +243,7 @@ export const AdminDashboard = () => {
       </div>
 
       {/* Расписание на эту неделю */}
-      <div className="card border-0 shadow-sm rounded-4 mb-4">
+      <div className="card border-0 shadow-sm rounded-4 mb-3">
         <div className="card-body p-3">
           <div className="d-flex align-items-center justify-content-between mb-2">
             <div className="fw-semibold">Расписание</div>
@@ -298,7 +298,7 @@ const KpiCard = ({ icon, label, value, accent, bg, hint, loading, onClick }) => 
   <div className="col-6 col-md-4 col-lg-2">
     <button
       type="button"
-      className="w-100 text-start rounded-4 p-3 border-0 h-100 d-flex flex-column gap-2"
+      className="w-100 text-start rounded-3 p-2 border-0 h-100 d-flex flex-column gap-1"
       style={{
         background: bg || '#f8f9fb',
         boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
@@ -309,18 +309,18 @@ const KpiCard = ({ icon, label, value, accent, bg, hint, loading, onClick }) => 
     >
       <div className="d-flex align-items-center gap-2" style={{ color: accent || '#374151' }}>
         {icon}
-        <div className="small fw-semibold text-uppercase" style={{ letterSpacing: 0.3 }}>
+        <div className="fw-semibold text-uppercase" style={{ letterSpacing: 0.3, fontSize: '0.7rem' }}>
           {label}
         </div>
       </div>
       <div
         className="fw-bold"
-        style={{ fontSize: '1.4rem', lineHeight: 1.2, color: accent || '#111827' }}
+        style={{ fontSize: '1.15rem', lineHeight: 1.1, color: accent || '#111827' }}
       >
         {loading ? '…' : value}
       </div>
       {hint && (
-        <div className="text-muted small" style={{ marginTop: -4 }}>
+        <div className="text-muted" style={{ fontSize: '0.7rem', lineHeight: 1.1 }}>
           {hint}
         </div>
       )}
@@ -332,7 +332,7 @@ const ActionCard = ({ title, value, icon, accent, bg, actionLabel, onClick }) =>
   <button
     type="button"
     onClick={onClick}
-    className="w-100 text-start rounded-4 p-3 border-0 d-flex align-items-center gap-3"
+    className="w-100 text-start rounded-3 p-2 border-0 d-flex align-items-center gap-2"
     style={{
       background: bg,
       boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
@@ -349,22 +349,22 @@ const ActionCard = ({ title, value, icon, accent, bg, actionLabel, onClick }) =>
   >
     <div
       className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-      style={{ width: 44, height: 44, background: '#ffffff', color: accent }}
+      style={{ width: 34, height: 34, background: '#ffffff', color: accent }}
     >
       {icon}
     </div>
     <div className="flex-grow-1">
-      <div className="text-muted small" style={{ fontWeight: 500 }}>
+      <div className="text-muted" style={{ fontWeight: 500, fontSize: '0.75rem' }}>
         {title}
       </div>
       <div className="d-flex align-items-baseline gap-2">
-        <div className="fw-bold" style={{ fontSize: '1.6rem', color: accent }}>
+        <div className="fw-bold" style={{ fontSize: '1.2rem', color: accent }}>
           {value}
         </div>
-        <div className="small text-muted">{actionLabel}</div>
+        <div className="text-muted" style={{ fontSize: '0.7rem' }}>{actionLabel}</div>
       </div>
     </div>
-    <IconArrowRight width={20} height={20} style={{ color: accent }} />
+    <IconArrowRight width={16} height={16} style={{ color: accent }} />
   </button>
 );
 
