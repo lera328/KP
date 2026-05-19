@@ -216,9 +216,8 @@ def seed():
                         grade=None if is_absent else 5,
                     )
 
-    # 7. Подписки на финансы — простая связь
-    for s in students:
-        Subscription.objects.create(student=s, total_lessons=24, remaining_lessons=18, is_active=True)
+    # 7. Подписки на финансы создаются только после реальной оплаты,
+    # поэтому здесь автоматически не создаются.
 
     print("\n=== Готово ===")
     print(f"Локаций: {Location.objects.count()}")
