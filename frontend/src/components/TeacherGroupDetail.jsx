@@ -265,12 +265,13 @@ const StudentsList = ({ students, onStudentClick }) => {
       {students.map((s) => {
         const fullName = `${s.first_name || ''} ${s.last_name || ''}`.trim() || s.username;
         const initials = (s.first_name?.[0] || '') + (s.last_name?.[0] || '');
+        const hasDebt = s.balance !== null && s.balance !== undefined && s.balance < 0;
         return (
           <button
             key={s.id}
             type="button"
             className="card border-0 shadow-sm rounded-4 text-start"
-            style={{ cursor: 'pointer', transition: 'transform 0.1s ease' }}
+            style={{ cursor: 'pointer', transition: 'transform 0.1s ease', border: hasDebt ? '2px solid #ef4444' : undefined, background: hasDebt ? '#fef2f2' : undefined }}
             onClick={() => onStudentClick(s)}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)';
@@ -285,17 +286,22 @@ const StudentsList = ({ students, onStudentClick }) => {
                 style={{
                   width: 44,
                   height: 44,
-                  background: '#eef2ff',
-                  color: '#3730a3',
+                  background: hasDebt ? '#fee2e2' : '#eef2ff',
+                  color: hasDebt ? '#dc2626' : '#3730a3',
                   fontSize: '0.95rem',
                 }}
               >
                 {initials.toUpperCase() || '👤'}
               </div>
               <div className="flex-grow-1">
-                <div className="fw-semibold">{fullName}</div>
+                <div className="fw-semibold" style={hasDebt ? { color: '#dc2626' } : {}}>{fullName}</div>
                 <div className="text-muted small">@{s.username}</div>
               </div>
+              {hasDebt && (
+                <span className="badge rounded-pill" style={{ background: '#fee2e2', color: '#dc2626', fontWeight: 600, fontSize: '0.75rem' }}>
+                  {s.balance}
+                </span>
+              )}
               <span className="text-muted" aria-hidden>›</span>
             </div>
           </button>

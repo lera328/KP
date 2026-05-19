@@ -112,7 +112,7 @@ export const AdminStudentDetail = () => {
                 <KpiCard label="Был" value={stats?.present || 0} accent="#16a34a" />
                 <KpiCard label="Пропуски" value={stats?.absent || 0} accent="#dc2626" />
                 <KpiCard label="Средняя оценка" value={stats?.avg_grade ?? '—'} />
-                <KpiCard label="Баланс" value={student.balance || 0} />
+                <KpiCard label="Баланс" value={student.balance ?? 0} accent={Number(student.balance ?? 0) < 0 ? '#dc2626' : undefined} />
                 <KpiCard label="Проектов" value={stats?.projects_count || 0} />
               </div>
             </div>

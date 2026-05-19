@@ -86,22 +86,23 @@ export const ParentChildren = () => {
             const balanceLabel = isPeriod
               ? `до ${new Date(item.valid_until).toLocaleDateString('ru-RU')}`
               : `${item.balance ?? 0} занятий`;
+            const hasDebt = !isPeriod && item.balance !== null && item.balance !== undefined && item.balance < 0;
 
             return (
-              <div key={item.id} className="card border-0 shadow-sm rounded-4">
+              <div key={item.id} className="card border-0 shadow-sm rounded-4" style={hasDebt ? { border: '2px solid #ef4444', background: '#fef2f2' } : {}}>
                 <div className="card-body p-4">
                   <div className="d-flex flex-wrap align-items-center gap-3">
                     {/* Аватар */}
                     <div
                       className="rounded-circle d-flex align-items-center justify-content-center fw-semibold flex-shrink-0"
-                      style={{ width: 56, height: 56, background: '#eef2ff', color: '#3730a3', fontSize: '1.2rem' }}
+                      style={{ width: 56, height: 56, background: hasDebt ? '#fee2e2' : '#eef2ff', color: hasDebt ? '#dc2626' : '#3730a3', fontSize: '1.2rem' }}
                     >
                       {init}
                     </div>
 
                     {/* Инфо */}
                     <div className="flex-grow-1" style={{ minWidth: 180 }}>
-                      <div className="fw-semibold" style={{ fontSize: '1.15rem' }}>{name}</div>
+                      <div className="fw-semibold" style={{ fontSize: '1.15rem', color: hasDebt ? '#dc2626' : undefined }}>{name}</div>
                       <div className="text-muted small">@{item.username}</div>
                       {groups.length > 0 && (
                         <div className="d-flex flex-wrap gap-1 mt-2">
@@ -121,7 +122,7 @@ export const ParentChildren = () => {
                     {/* Баланс */}
                     <div className="text-end flex-shrink-0">
                       <div className="text-muted small">Баланс</div>
-                      <div className="fw-semibold" style={{ fontSize: '1.1rem', color: isPeriod ? '#2563eb' : '#111827' }}>
+                      <div className="fw-semibold" style={{ fontSize: '1.1rem', color: hasDebt ? '#dc2626' : isPeriod ? '#2563eb' : '#111827' }}>
                         {balanceLabel}
                       </div>
                     </div>

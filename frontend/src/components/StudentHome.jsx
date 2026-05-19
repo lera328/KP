@@ -170,10 +170,11 @@ export const StudentHome = () => {
               <div className="row g-3 h-100">
                 <div className="col-6">
                   <StatCard
-                    label={balance?.valid_from ? 'Абонемент' : 'Осталось уроков'}
+                    label={balance?.valid_from ? 'Абонемент' : (Number(balance?.remaining_lessons ?? 0) < 0 ? 'Не оплачен!' : 'Осталось уроков')}
                     value={balance?.valid_until
                       ? `до ${new Date(balance.valid_until).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })}`
                       : (balance?.remaining_lessons ?? 0)}
+                    danger={!balance?.valid_from && Number(balance?.remaining_lessons ?? 0) < 0}
                   />
                 </div>
                 <div className="col-6">
@@ -256,18 +257,18 @@ export const StudentHome = () => {
   );
 };
 
-const StatCard = ({ label, value }) => {
+const StatCard = ({ label, value, danger }) => {
   const display = useCountUp(value);
   return (
-    <div className="card border-0 shadow-sm rounded-4 h-100">
+    <div className="card border-0 shadow-sm rounded-4 h-100" style={danger ? { border: '2px solid #ef4444', background: '#fef2f2' } : {}}>
       <div className="card-body p-3">
         <div
-          className="text-muted small text-uppercase mb-1"
-          style={{ letterSpacing: 0.5, fontSize: '0.7rem' }}
+          className="small text-uppercase mb-1"
+          style={{ letterSpacing: 0.5, fontSize: '0.7rem', color: danger ? '#dc2626' : '#6b7280' }}
         >
           {label}
         </div>
-        <div className="fw-semibold" style={{ fontSize: '1.75rem', lineHeight: 1.1 }}>
+        <div className="fw-semibold" style={{ fontSize: '1.75rem', lineHeight: 1.1, color: danger ? '#dc2626' : undefined }}>
           {display}
         </div>
       </div>

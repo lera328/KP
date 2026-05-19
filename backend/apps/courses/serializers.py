@@ -48,16 +48,19 @@ class GroupSerializer(serializers.ModelSerializer):
         return obj.location.name if obj.location_id else None
 
     def get_students(self, obj):
+        from apps.finance.models import Subscription
         students = obj.students.all().order_by("id")
-        return [
-            {
+        result = []
+        for student in students:
+            sub = Subscription.objects.filter(student=student, is_active=True).first()
+            result.append({
                 "id": student.id,
                 "username": student.username,
                 "first_name": student.first_name,
                 "last_name": student.last_name,
-            }
-            for student in students
-        ]
+                "balance": sub.remaining_lessons if sub else None,
+            })
+        return result
 
     def get_teachers(self, obj):
         teachers = obj.teachers.all().order_by("id")

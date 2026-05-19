@@ -155,7 +155,7 @@ export const TeacherStudentDetail = () => {
                   label="Средняя оценка"
                   value={stats?.avg_grade ?? '—'}
                 />
-                <KpiCard label="Баланс" value={student.balance || 0} />
+                <KpiCard label="Баланс" value={student.balance ?? 0} accent={Number(student.balance ?? 0) < 0 ? '#dc2626' : undefined} />
                 <KpiCard label="Проектов" value={stats?.projects_count || 0} />
               </div>
             </div>

@@ -54,6 +54,7 @@ export const ConductLessonModal = ({ lesson, group, onClose, onSaved }) => {
         s.username ||
         `ID ${s.id}`,
       subtitle: '',
+      hasDebt: s.balance !== null && s.balance !== undefined && s.balance < 0,
     }));
   }, [isMakeup, lesson, group]);
 
@@ -77,6 +78,7 @@ export const ConductLessonModal = ({ lesson, group, onClose, onSaved }) => {
         studentId: s.id,
         studentName: s.fullName,
         subtitle: s.subtitle,
+        hasDebt: s.hasDebt,
         status: existing?.status || 'present',
         grade: existing?.grade != null ? String(existing.grade) : '',
         teacher_comment: existing?.teacher_comment || '',
@@ -346,18 +348,18 @@ const StudentRow = ({ row, saving, onChange, onOpenStudent }) => {
   return (
     <div
       className="rounded-3 p-2 p-md-3"
-      style={{ background: '#f8f9fb', borderLeft: `3px solid ${meta.color}` }}
+      style={{ background: row.hasDebt ? '#fef2f2' : '#f8f9fb', borderLeft: `3px solid ${row.hasDebt ? '#ef4444' : meta.color}` }}
     >
       <div className="d-flex flex-wrap align-items-center gap-2">
         <div className="flex-grow-1" style={{ minWidth: 160 }}>
           <button
             type="button"
             className="btn btn-link p-0 fw-semibold text-start text-decoration-none"
-            style={{ color: '#111827' }}
+            style={{ color: row.hasDebt ? '#dc2626' : '#111827' }}
             onClick={onOpenStudent}
             title="Открыть карточку ученика"
           >
-            {row.studentName}
+            {row.studentName}{row.hasDebt ? ' ⚠' : ''}
           </button>
           {row.subtitle && (
             <div className="text-muted small" style={{ lineHeight: 1.2 }}>
