@@ -70,8 +70,8 @@ export const StudentBalance = () => {
                       </>
                     ) : (
                       <>
-                        <div className={`display-6 fw-bold mb-2${Number(balance?.remaining_lessons ?? 0) < 0 ? ' text-danger' : ''}`}>{Number(balance?.remaining_lessons ?? 0)}</div>
-                        <div className="text-muted">{Number(balance?.remaining_lessons ?? 0) < 0 ? 'Абонемент не оплачен' : 'Осталось занятий'}</div>
+                        <div className={`display-6 fw-bold mb-2${Number(balance?.remaining_lessons ?? 0) <= 0 ? ' text-danger' : ''}`}>{Number(balance?.remaining_lessons ?? 0)}</div>
+                        <div className="text-muted">{Number(balance?.remaining_lessons ?? 0) <= 0 ? 'Абонемент не оплачен' : 'Осталось занятий'}</div>
                       </>
                     )}
                     {subscription && subscription.total_lessons > 0 && (

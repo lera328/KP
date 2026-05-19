@@ -174,7 +174,7 @@ export const StudentHome = () => {
                     value={balance?.valid_until
                       ? `до ${new Date(balance.valid_until).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })}`
                       : (balance?.remaining_lessons ?? 0)}
-                    danger={!balance?.valid_from && Number(balance?.remaining_lessons ?? 0) < 0}
+                    danger={!balance?.valid_from && (balance == null || Number(balance?.remaining_lessons ?? 0) <= 0)}
                   />
                 </div>
                 <div className="col-6">

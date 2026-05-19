@@ -265,7 +265,7 @@ const StudentsList = ({ students, onStudentClick }) => {
       {students.map((s) => {
         const fullName = `${s.first_name || ''} ${s.last_name || ''}`.trim() || s.username;
         const initials = (s.first_name?.[0] || '') + (s.last_name?.[0] || '');
-        const hasDebt = s.balance !== null && s.balance !== undefined && s.balance < 0;
+        const hasDebt = s.balance === null || s.balance === undefined || s.balance < 0;
         return (
           <button
             key={s.id}

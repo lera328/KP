@@ -54,7 +54,7 @@ export const ConductLessonModal = ({ lesson, group, onClose, onSaved }) => {
         s.username ||
         `ID ${s.id}`,
       subtitle: '',
-      hasDebt: s.balance !== null && s.balance !== undefined && s.balance < 0,
+      hasDebt: s.balance === null || s.balance === undefined || s.balance < 0,
     }));
   }, [isMakeup, lesson, group]);
 

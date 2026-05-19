@@ -469,7 +469,7 @@ const StudentsList = ({ students, teachers, navigate, onRemoveStudent, available
         const name = fullName(u);
         const init = initials(u);
         const isTeacher = u._role === 'teacher';
-        const hasDebt = !isTeacher && u.balance !== null && u.balance !== undefined && u.balance < 0;
+        const hasDebt = !isTeacher && (u.balance === null || u.balance === undefined || u.balance < 0);
         return (
           <div
             key={`${u._role}-${u.id}`}

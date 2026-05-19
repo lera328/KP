@@ -597,7 +597,7 @@ export const AdminUsers = () => {
             const isCurrentUser = currentUser?.id === row.id;
             const isDeleting = deletingUserId === row.id;
             const isResetting = resettingUserId === row.id;
-            const hasDebt = roleCode === 'student' && row.balance !== null && row.balance !== undefined && row.balance < 0;
+            const hasDebt = roleCode === 'student' && (row.balance === null || row.balance === undefined || row.balance < 0);
 
             return (
               <div
@@ -628,7 +628,7 @@ export const AdminUsers = () => {
                   </div>
                   {hasDebt && (
                     <span className="badge rounded-pill" style={{ background: '#fee2e2', color: '#dc2626', fontWeight: 600, fontSize: '0.78rem' }}>
-                      Баланс: {row.balance}
+                      {row.balance == null ? 'Нет абонемента' : `Баланс: ${row.balance}`}
                     </span>
                   )}
                   <span

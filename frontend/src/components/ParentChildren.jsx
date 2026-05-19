@@ -86,7 +86,7 @@ export const ParentChildren = () => {
             const balanceLabel = isPeriod
               ? `до ${new Date(item.valid_until).toLocaleDateString('ru-RU')}`
               : `${item.balance ?? 0} занятий`;
-            const hasDebt = !isPeriod && item.balance !== null && item.balance !== undefined && item.balance < 0;
+            const hasDebt = !isPeriod && (item.balance === null || item.balance === undefined || item.balance < 0);
 
             return (
               <div key={item.id} className="card border-0 shadow-sm rounded-4" style={hasDebt ? { border: '2px solid #ef4444', background: '#fef2f2' } : {}}>
