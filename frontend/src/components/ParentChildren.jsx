@@ -82,11 +82,8 @@ export const ParentChildren = () => {
             const name = childName(item);
             const init = childInitials(item);
             const groups = Array.isArray(item.groups) ? item.groups : [];
-            const isPeriod = item.valid_from && item.valid_until;
-            const balanceLabel = isPeriod
-              ? `до ${new Date(item.valid_until).toLocaleDateString('ru-RU')}`
-              : `${item.balance ?? 0} занятий`;
-            const hasDebt = !isPeriod && (item.balance === null || item.balance === undefined || item.balance < 0);
+            const balanceLabel = `${item.balance ?? 0} занятий`;
+            const hasDebt = item.balance === null || item.balance === undefined || item.balance < 0;
 
             return (
               <div key={item.id} className="card border-0 shadow-sm rounded-4" style={hasDebt ? { border: '2px solid #ef4444', background: '#fef2f2' } : {}}>

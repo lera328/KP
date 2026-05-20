@@ -170,11 +170,9 @@ export const StudentHome = () => {
               <div className="row g-3 h-100">
                 <div className="col-6">
                   <StatCard
-                    label={balance?.valid_from ? 'Абонемент' : (Number(balance?.remaining_lessons ?? 0) < 0 ? 'Не оплачен!' : 'Осталось уроков')}
-                    value={balance?.valid_until
-                      ? `до ${new Date(balance.valid_until).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })}`
-                      : (balance?.remaining_lessons ?? 0)}
-                    danger={!balance?.valid_from && (balance == null || Number(balance?.remaining_lessons ?? 0) <= 0)}
+                    label={Number(balance?.remaining_lessons ?? 0) < 0 ? 'Не оплачен!' : 'Осталось уроков'}
+                    value={balance?.remaining_lessons ?? 0}
+                    danger={balance == null || Number(balance?.remaining_lessons ?? 0) <= 0}
                   />
                 </div>
                 <div className="col-6">
