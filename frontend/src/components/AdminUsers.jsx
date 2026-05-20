@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { AdminLayout } from './AdminLayout';
 import { useAuth } from '../context/AuthContext';
@@ -96,6 +97,7 @@ const EDIT_FORM_INITIAL = {
 
 export const AdminUsers = () => {
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
 
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -215,6 +217,16 @@ export const AdminUsers = () => {
   };
 
   const openViewUser = (targetUser) => {
+    const roles = Array.isArray(targetUser?.roles) ? targetUser.roles : [];
+    if (roles.includes('student')) {
+      navigate(`/admin/students/${targetUser.id}`);
+      return;
+    }
+    if (roles.includes('teacher') || targetUser?.is_superuser) {
+      navigate(`/admin/teachers/${targetUser.id}`);
+      return;
+    }
+    // Для ролей без собственной страницы (родитель, админ) — пока открываем модальное окно
     setViewingUser(targetUser);
   };
 
