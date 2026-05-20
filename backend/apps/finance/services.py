@@ -217,3 +217,52 @@ def create_admin_payment(student_id: int, plan: str) -> PaymentIntent:
     )
 
     return intent
+
+
+@transaction.atomic
+def cancel_payment_intent(intent_id: int) -> dict:
+    """
+    Отменить платёж: удалить созданную подписку и платёж, реактивировать
+    предыдущую подписку ученика (если была), удалить сам PaymentIntent.
+    """
+    try:
+        intent = PaymentIntent.objects.select_for_update().get(id=intent_id)
+    except PaymentIntent.DoesNotExist:
+        raise ValueError("Платёж не найден")
+
+    student = intent.student
+    was_paid = intent.status == PaymentIntent.Status.PAID
+
+    if was_paid:
+        # Ищем подписку, созданную этим платежом — по времени processed_at
+        # (±2 минуты для надёжности).
+        if intent.processed_at:
+            window_start = intent.processed_at - timedelta(minutes=2)
+            window_end = intent.processed_at + timedelta(minutes=2)
+            created_subs = list(
+                Subscription.objects.filter(
+                    student=student,
+                    created_at__gte=window_start,
+                    created_at__lte=window_end,
+                ).order_by("-created_at")
+            )
+        else:
+            created_subs = []
+
+        # Удаляем подписку с её платежами
+        for sub in created_subs:
+            sub.payments.all().delete()
+            sub.delete()
+
+        # Реактивируем последнюю деактивированную подписку до этой
+        prev = (
+            Subscription.objects.filter(student=student, is_active=False)
+            .order_by("-created_at")
+            .first()
+        )
+        if prev:
+            prev.is_active = True
+            prev.save(update_fields=["is_active"])
+
+    intent.delete()
+    return {"cancelled": True, "was_paid": was_paid}

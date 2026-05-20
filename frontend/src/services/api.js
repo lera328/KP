@@ -682,6 +682,12 @@ class APIService {
       body: JSON.stringify(payload),
     });
   }
+
+  async cancelAdminPaymentIntent(intentId) {
+    return this.request(`/finance/payments/admin/intents/${intentId}/cancel/`, {
+      method: 'POST',
+    });
+  }
 }
 
 export default new APIService();

@@ -238,6 +238,24 @@ class PaymentViewSet(viewsets.ModelViewSet):
         serializer = PaymentIntentSerializer(intents, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path=r'admin/intents/(?P<intent_id>\d+)/cancel')
+    def admin_cancel_intent(self, request, intent_id=None):
+        user = request.user
+        if not (user.roles.filter(code=Role.Code.ADMIN).exists() or user.is_superuser):
+            raise PermissionDenied("Только администратор может отменять платежи")
+
+        try:
+            from .services import cancel_payment_intent
+            result = cancel_payment_intent(int(intent_id))
+            return Response({"detail": "Платёж отменён", **result})
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response(
+                {"error": f"Ошибка при отмене платежа: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='admin/create')
     def admin_create(self, request):
         user = request.user

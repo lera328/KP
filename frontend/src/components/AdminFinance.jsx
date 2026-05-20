@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import { AdminLayout } from './AdminLayout';
-import { IconPlus, IconRefresh, IconSearch, IconWallet, IconCheck, IconClock } from './KidIcons';
+import { IconPlus, IconRefresh, IconSearch, IconWallet } from './KidIcons';
 
 const PLAN_LABELS = {
   month: '1 месяц',
@@ -14,13 +14,6 @@ const STATUS_META = {
   paid: { label: 'Оплачен', bg: '#ecfdf5', color: '#16a34a' },
   failed: { label: 'Ошибка', bg: '#fef2f2', color: '#dc2626' },
 };
-
-const STATUS_PILLS = [
-  { value: 'all', label: 'Все' },
-  { value: 'pending', label: 'Ожидают' },
-  { value: 'paid', label: 'Оплачены' },
-  { value: 'failed', label: 'Ошибки' },
-];
 
 const formatDateTime = (value) => {
   if (!value) return '—';
@@ -42,7 +35,7 @@ export const AdminFinance = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [studentFilter, setStudentFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [cancellingId, setCancellingId] = useState(null);
 
   // Form state for manual payment
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -76,26 +69,16 @@ export const AdminFinance = () => {
       if (studentFilter && Number(intent.student_id) !== Number(studentFilter)) {
         return false;
       }
-
-      if (statusFilter !== 'all' && intent.status !== statusFilter) {
-        return false;
-      }
-
       return true;
     });
-  }, [paymentIntents, studentFilter, statusFilter]);
+  }, [paymentIntents, studentFilter]);
 
   const stats = useMemo(() => {
     const totalIntents = paymentIntents.length;
     const totalAmount = paymentIntents.reduce((sum, intent) => sum + parseFloat(intent.amount || 0), 0);
-    const paidIntents = paymentIntents.filter((intent) => intent.status === 'paid').length;
-    const pendingIntents = paymentIntents.filter((intent) => intent.status === 'pending').length;
-
     return {
       totalIntents,
       totalAmount: totalAmount.toFixed(2),
-      paidIntents,
-      pendingIntents,
     };
   }, [paymentIntents]);
 
@@ -161,7 +144,25 @@ export const AdminFinance = () => {
 
   const handleResetFilters = () => {
     setStudentFilter('');
-    setStatusFilter('all');
+  };
+
+  const handleCancelIntent = async (intent) => {
+    const label = `${intent.student_name || `Ученик #${intent.student_id}`} · ${formatMoney(intent.amount)}`;
+    if (!window.confirm(`Отменить платёж?\n${label}\n\nБудут удалены созданная подписка и платёж, активной станет предыдущая подписка.`)) {
+      return;
+    }
+    setCancellingId(intent.id);
+    setError('');
+    setSuccess('');
+    try {
+      await api.cancelAdminPaymentIntent(intent.id);
+      setSuccess('Платёж отменён.');
+      await loadData();
+    } catch (err) {
+      setError(err.message || 'Не удалось отменить платёж.');
+    } finally {
+      setCancellingId(null);
+    }
   };
 
   const handleCreatePayment = async (e) => {
@@ -245,24 +246,6 @@ export const AdminFinance = () => {
             value={formatMoney(stats.totalAmount)}
             bg="#eff6ff"
             accent="#1d4ed8"
-          />
-        </div>
-        <div className="col-md-3 col-6">
-          <KpiCard
-            icon={<IconCheck width={20} height={20} />}
-            label="Оплачено"
-            value={stats.paidIntents}
-            bg="#ecfdf5"
-            accent="#16a34a"
-          />
-        </div>
-        <div className="col-md-3 col-6">
-          <KpiCard
-            icon={<IconClock width={20} height={20} />}
-            label="Ожидают"
-            value={stats.pendingIntents}
-            bg="#fef3c7"
-            accent="#b45309"
           />
         </div>
       </div>
@@ -392,28 +375,7 @@ export const AdminFinance = () => {
               ))}
             </select>
           </div>
-          <div className="d-flex gap-2 flex-wrap">
-            {STATUS_PILLS.map((pill) => {
-              const active = statusFilter === pill.value;
-              return (
-                <button
-                  type="button"
-                  key={pill.value}
-                  className="btn btn-sm rounded-pill px-3"
-                  style={{
-                    background: active ? '#111827' : '#f1f3f5',
-                    color: active ? '#fff' : '#374151',
-                    border: 'none',
-                  }}
-                  onClick={() => setStatusFilter(pill.value)}
-                  disabled={loading}
-                >
-                  {pill.label}
-                </button>
-              );
-            })}
-          </div>
-          {(studentFilter || statusFilter !== 'all') ? (
+          {studentFilter ? (
             <button
               className="btn btn-link text-decoration-none ms-auto p-0 small"
               onClick={handleResetFilters}
@@ -462,43 +424,26 @@ export const AdminFinance = () => {
                           <div className="text-muted small">Обработан: {formatDateTime(intent.processed_at)}</div>
                         ) : null}
                       </div>
-                      <span
-                        className="badge rounded-pill align-self-center"
-                        style={{ background: meta.bg, color: meta.color, fontWeight: 500 }}
-                      >
-                        {meta.label}
-                      </span>
+                      <div className="d-flex flex-column align-items-end gap-2">
+                        <span
+                          className="badge rounded-pill"
+                          style={{ background: meta.bg, color: meta.color, fontWeight: 500 }}
+                        >
+                          {meta.label}
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger rounded-pill px-3"
+                          onClick={() => handleCancelIntent(intent)}
+                          disabled={cancellingId === intent.id}
+                        >
+                          {cancellingId === intent.id ? 'Отмена…' : 'Отменить'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
               })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Payments history */}
-      <div className="card border-0 shadow-sm rounded-4">
-        <div className="card-body p-0">
-          <div className="px-3 py-2 d-flex align-items-center justify-content-between border-bottom">
-            <div className="fw-semibold">История обработанных платежей</div>
-            <div className="text-muted small">{payments.length}</div>
-          </div>
-          {loading ? (
-            <div className="p-4 text-center text-muted">Загрузка...</div>
-          ) : payments.length === 0 ? (
-            <div className="p-4 text-center text-muted">Обработанных платежей пока нет.</div>
-          ) : (
-            <div className="list-group list-group-flush">
-              {payments.slice(0, 50).map((payment) => (
-                <div key={payment.id} className="list-group-item border-0 px-3 py-3 d-flex align-items-center justify-content-between">
-                  <div>
-                    <div className="fw-semibold">{formatMoney(payment.amount)}</div>
-                    <div className="text-muted small">#{payment.id}</div>
-                  </div>
-                  <div className="text-muted small">{formatDateTime(payment.paid_at)}</div>
-                </div>
-              ))}
             </div>
           )}
         </div>
