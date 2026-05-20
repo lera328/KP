@@ -222,11 +222,11 @@ export const AdminUsers = () => {
       navigate(`/admin/students/${targetUser.id}`);
       return;
     }
-    if (roles.includes('teacher') || targetUser?.is_superuser) {
+    if (roles.includes('teacher') && !targetUser?.is_superuser) {
       navigate(`/admin/teachers/${targetUser.id}`);
       return;
     }
-    // Для ролей без собственной страницы (родитель, админ) — пока открываем модальное окно
+    // Для ролей без собственной страницы (родитель, админ) — открываем модальное окно
     setViewingUser(targetUser);
   };
 
