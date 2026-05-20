@@ -129,7 +129,9 @@ def process_pending_payment_intents():
         plan_data = get_payment_plans().get(intent.plan, {})
         duration_months = plan_data.get("duration_months", 0)
 
-        # Деактивируем предыдущую подписку
+        # Деактивируем предыдущую подписку, переносим отрицательный остаток (долг)
+        prev_active = Subscription.objects.filter(student=intent.student, is_active=True).first()
+        carry_over = min(prev_active.remaining_lessons, 0) if prev_active else 0
         Subscription.objects.filter(student=intent.student, is_active=True).update(is_active=False)
 
         today = date.today()
@@ -137,7 +139,7 @@ def process_pending_payment_intents():
             subscription = Subscription.objects.create(
                 student=intent.student,
                 total_lessons=0,
-                remaining_lessons=0,
+                remaining_lessons=carry_over,
                 valid_from=today,
                 valid_until=today + relativedelta(months=duration_months) - timedelta(days=1),
                 is_active=True,
@@ -146,7 +148,7 @@ def process_pending_payment_intents():
             subscription = Subscription.objects.create(
                 student=intent.student,
                 total_lessons=intent.lessons,
-                remaining_lessons=intent.lessons,
+                remaining_lessons=intent.lessons + carry_over,
                 is_active=True,
             )
 
@@ -178,7 +180,9 @@ def create_admin_payment(student_id: int, plan: str) -> PaymentIntent:
     duration_months = plan_data.get("duration_months", 0)
     today = date.today()
 
-    # Деактивируем предыдущую подписку
+    # Деактивируем предыдущую подписку, переносим отрицательный остаток (долг)
+    prev_active = Subscription.objects.filter(student=student, is_active=True).first()
+    carry_over = min(prev_active.remaining_lessons, 0) if prev_active else 0
     Subscription.objects.filter(student=student, is_active=True).update(is_active=False)
 
     if duration_months > 0:
@@ -188,7 +192,7 @@ def create_admin_payment(student_id: int, plan: str) -> PaymentIntent:
         subscription = Subscription.objects.create(
             student=student,
             total_lessons=0,
-            remaining_lessons=0,
+            remaining_lessons=carry_over,
             valid_from=valid_from,
             valid_until=valid_until,
             is_active=True,
@@ -198,7 +202,7 @@ def create_admin_payment(student_id: int, plan: str) -> PaymentIntent:
         subscription = Subscription.objects.create(
             student=student,
             total_lessons=plan_data["lessons"],
-            remaining_lessons=plan_data["lessons"],
+            remaining_lessons=int(plan_data["lessons"]) + carry_over,
             is_active=True,
         )
 
