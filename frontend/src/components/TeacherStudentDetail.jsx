@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
 import { AppLayout, teacherNavItems } from './AppLayout';
+import { ConductLessonModal } from './ConductLessonModal';
 
 const formatDate = (v) =>
   v
@@ -44,7 +45,23 @@ export const TeacherStudentDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [periodDays, setPeriodDays] = useState(90);
-  const [activeLesson, setActiveLesson] = useState(null);
+  const [conductLesson, setConductLesson] = useState(null);
+  const [conductGroup, setConductGroup] = useState(null);
+
+  const openLessonForEdit = async (item) => {
+    if (!item?.lesson_id) return;
+    try {
+      const full = await api.getLesson(item.lesson_id);
+      if (full.group) {
+        try { setConductGroup(await api.getGroup(full.group)); } catch { setConductGroup(null); }
+      } else {
+        setConductGroup(null);
+      }
+      setConductLesson(full);
+    } catch (e) {
+      setError(e.message || 'Не удалось загрузить занятие.');
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -215,7 +232,7 @@ export const TeacherStudentDetail = () => {
             periodDays={periodDays}
             onPeriodChange={setPeriodDays}
             loading={loading}
-            onTileClick={(item) => setActiveLesson(item)}
+            onTileClick={openLessonForEdit}
           />
 
           <div
@@ -228,11 +245,12 @@ export const TeacherStudentDetail = () => {
         </>
       )}
 
-      {activeLesson && (
-        <LessonInfoModal
-          item={activeLesson}
-          studentName={fullName}
-          onClose={() => setActiveLesson(null)}
+      {conductLesson && (
+        <ConductLessonModal
+          lesson={conductLesson}
+          group={conductGroup}
+          onClose={() => setConductLesson(null)}
+          onSaved={() => { setConductLesson(null); }}
         />
       )}
     </AppLayout>
