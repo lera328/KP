@@ -175,6 +175,31 @@ def notify_parents_about_makeup_approval(makeup_request):
         else:
             skipped += 1
 
+    # Уведомление преподавателю — владельцу слота отработки
+    teacher = lesson.teacher if lesson else None
+    if teacher and teacher.telegram_chat_id:
+        teacher_message = (
+            f"📅 Новая отработка в расписании\n"
+            f"Ученик: {context['student_name']}\n"
+            f"Тема: {context['lesson_topic']}\n"
+            f"Дата: {context['lesson_starts_at']}"
+        )
+        t_status, t_details = _send_telegram_message(teacher.telegram_chat_id, teacher_message)
+        _create_notification_log(
+            NotificationEvent.EventType.MAKEUP_APPROVED,
+            student,
+            teacher,
+            teacher_message,
+            t_status,
+            t_details,
+        )
+        if t_status == NotificationEvent.DeliveryStatus.SENT:
+            sent += 1
+        elif t_status == NotificationEvent.DeliveryStatus.FAILED:
+            failed += 1
+        else:
+            skipped += 1
+
     return {"sent": sent, "failed": failed, "skipped": skipped}
 
 
