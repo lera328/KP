@@ -787,6 +787,44 @@ export const AdminUsers = () => {
                       }
                     />
                   </div>
+
+                  {Array.isArray(viewingUser.roles) && viewingUser.roles.includes('parent') ? (
+                    <div className="mt-3">
+                      <div className="text-muted small mb-2">Дети</div>
+                      {(() => {
+                        const childIds = Array.isArray(viewingUser.children) ? viewingUser.children : [];
+                        if (childIds.length === 0) {
+                          return <div className="text-muted small">Дети не привязаны.</div>;
+                        }
+                        const items = childIds.map((cid) => {
+                          const student = studentUsers.find((s) => s.id === cid);
+                          const name = student
+                            ? (`${student.first_name || ''} ${student.last_name || ''}`.trim() || student.username || `ID ${cid}`)
+                            : `ID ${cid}`;
+                          return { id: cid, name, exists: Boolean(student) };
+                        });
+                        return (
+                          <div className="d-flex flex-wrap gap-2">
+                            {items.map((c) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                className="btn btn-sm btn-light border rounded-pill px-3 d-inline-flex align-items-center gap-2"
+                                onClick={() => {
+                                  closeViewUser();
+                                  navigate(`/admin/students/${c.id}`);
+                                }}
+                                title="Открыть карточку ученика"
+                              >
+                                <span>{c.name}</span>
+                                <span className="text-muted small">→</span>
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="modal-footer border-0">
                   <button type="button" className="btn btn-light border rounded-pill px-4" onClick={closeViewUser}>
