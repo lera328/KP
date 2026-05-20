@@ -1,17 +1,20 @@
 {
-  "month": {
-    "amount": "12000.00",
-    "lessons": 8,
-    "label": "1 месяц"
+  "lessons_5": {
+    "amount": "5000.00",
+    "lessons": 5,
+    "duration_months": 0,
+    "label": "5 занятий"
   },
-  "half_year": {
-    "amount": "66000.00",
-    "lessons": 48,
-    "label": "6 месяцев"
+  "lessons_15": {
+    "amount": "13500.00",
+    "lessons": 15,
+    "duration_months": 0,
+    "label": "15 занятий"
   },
-  "year": {
-    "amount": "120000.00",
-    "lessons": 96,
-    "label": "12 месяцев"
+  "lessons_30": {
+    "amount": "24000.00",
+    "lessons": 30,
+    "duration_months": 0,
+    "label": "30 занятий"
   }
 }

@@ -11,9 +11,9 @@ from .models import Payment, PaymentIntent, Subscription
 
 
 _DEFAULT_PLANS = {
-    "month":     {"amount": "12000.00",  "lessons": 0, "duration_months": 1,  "label": "1 месяц"},
-    "half_year": {"amount": "66000.00",  "lessons": 0, "duration_months": 6,  "label": "6 месяцев"},
-    "year":      {"amount": "120000.00", "lessons": 0, "duration_months": 12, "label": "12 месяцев"},
+    "lessons_5":  {"amount": "5000.00",  "lessons": 5,  "duration_months": 0, "label": "5 занятий"},
+    "lessons_15": {"amount": "13500.00", "lessons": 15, "duration_months": 0, "label": "15 занятий"},
+    "lessons_30": {"amount": "24000.00", "lessons": 30, "duration_months": 0, "label": "30 занятий"},
 }
 
 _PLANS_FILE = Path(__file__).resolve().parent.parent.parent / "pricing_plans.json"

@@ -51,11 +51,6 @@ class PaymentIntent(models.Model):
         PAID = "paid", "Оплачен"
         FAILED = "failed", "Ошибка"
 
-    class Plan(models.TextChoices):
-        MONTH = "month", "1 месяц"
-        HALF_YEAR = "half_year", "6 месяцев"
-        YEAR = "year", "12 месяцев"
-
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="payment_intents")
     parent = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -64,7 +59,7 @@ class PaymentIntent(models.Model):
         blank=True,
         related_name="created_payment_intents",
     )
-    plan = models.CharField(max_length=16, choices=Plan.choices)
+    plan = models.CharField(max_length=32)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     lessons = models.PositiveIntegerField()
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)

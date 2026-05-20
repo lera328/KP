@@ -4,12 +4,6 @@ import { AppLayout, parentNavItems } from './AppLayout';
 
 const LOW_BALANCE_THRESHOLD = 3;
 
-const PLAN_LABELS = {
-  month: '1 месяц',
-  half_year: '6 месяцев',
-  year: '12 месяцев',
-};
-
 const formatDateTime = (value) => {
   if (!value) return '-';
   return new Date(value).toLocaleString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -28,8 +22,11 @@ const INTENT_STATUS = {
 
 export const ParentBilling = () => {
   const [billingData, setBillingData] = useState([]);
+  const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const planLabel = (code) => plans.find((p) => p.code === code)?.label || code;
 
   const hasPendingIntent = useMemo(
     () =>
@@ -54,6 +51,7 @@ export const ParentBilling = () => {
 
   useEffect(() => {
     loadBilling();
+    api.getPaymentPlans().then((data) => setPlans(Array.isArray(data) ? data : [])).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -188,7 +186,7 @@ export const ParentBilling = () => {
                           const st = INTENT_STATUS[intent.status] || INTENT_STATUS.error;
                           return (
                             <div key={intent.id} className="d-flex flex-wrap align-items-center gap-2 rounded-3 p-2" style={{ background: '#f8f9fb' }}>
-                              <span className="small flex-grow-1">{PLAN_LABELS[intent.plan] || intent.plan} · {intent.lessons} зан. · {intent.amount} ₸</span>
+                              <span className="small flex-grow-1">{planLabel(intent.plan)} · {intent.lessons} зан. · {intent.amount} ₸</span>
                               <span className="badge rounded-pill" style={{ background: st.bg, color: st.color, fontWeight: 500 }}>{st.label}</span>
                               <span className="text-muted small">{formatDateTime(intent.created_at)}</span>
                             </div>

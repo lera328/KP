@@ -3,12 +3,6 @@ import api from '../services/api';
 import { AdminLayout } from './AdminLayout';
 import { IconPlus, IconRefresh, IconSearch, IconWallet } from './KidIcons';
 
-const PLAN_LABELS = {
-  month: '1 месяц',
-  half_year: '6 месяцев',
-  year: '12 месяцев',
-};
-
 const STATUS_META = {
   pending: { label: 'Ожидает', bg: '#fef3c7', color: '#b45309' },
   paid: { label: 'Оплачен', bg: '#ecfdf5', color: '#16a34a' },
@@ -40,7 +34,7 @@ export const AdminFinance = () => {
   // Form state for manual payment
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [formStudentId, setFormStudentId] = useState('');
-  const [formPlan, setFormPlan] = useState('month');
+  const [formPlan, setFormPlan] = useState('');
   const [formSubmitting, setFormSubmitting] = useState(false);
 
   // Pricing plans state
@@ -179,7 +173,7 @@ export const AdminFinance = () => {
 
       setSuccess(response?.detail || 'Платеж успешно создан');
       setFormStudentId('');
-      setFormPlan('month');
+      setFormPlan(plans[0]?.code || '');
       setShowCreateForm(false);
       await loadData();
     } catch (err) {
@@ -220,7 +214,7 @@ export const AdminFinance = () => {
         <button
           type="button"
           className="btn btn-dark rounded-pill px-3 d-flex align-items-center gap-2"
-          onClick={() => setShowCreateForm(true)}
+          onClick={() => { setFormPlan(plans[0]?.code || ''); setShowCreateForm(true); }}
           disabled={loading}
         >
           <IconPlus width={16} height={16} />
@@ -318,15 +312,15 @@ export const AdminFinance = () => {
                         />
                       </div>
                       <div>
-                        <label className="form-label small text-muted mb-1">Период (мес.)</label>
+                        <label className="form-label small text-muted mb-1">Количество занятий</label>
                         <input
                           type="number"
                           className="form-control form-control-sm rounded-3"
-                          value={plan.duration_months || ''}
+                          value={plan.lessons || ''}
                           min={1}
                           onChange={(e) => {
                             const next = [...editingPlans];
-                            next[idx] = { ...next[idx], duration_months: parseInt(e.target.value) || 1 };
+                            next[idx] = { ...next[idx], lessons: parseInt(e.target.value) || 1, duration_months: 0 };
                             setEditingPlans(next);
                           }}
                         />
@@ -414,7 +408,7 @@ export const AdminFinance = () => {
                         </div>
                       </div>
                       <div className="text-muted small" style={{ minWidth: 120 }}>
-                        <div>Тариф: {PLAN_LABELS[intent.plan] || intent.plan}</div>
+                        <div>Тариф: {plans.find((p) => p.code === intent.plan)?.label || intent.plan}</div>
                         <div>Занятий: {intent.lessons}</div>
                       </div>
                       <div className="text-end" style={{ minWidth: 140 }}>
@@ -489,11 +483,14 @@ export const AdminFinance = () => {
                       className="form-select rounded-3"
                       value={formPlan}
                       onChange={(e) => setFormPlan(e.target.value)}
-                      disabled={formSubmitting}
+                      disabled={formSubmitting || plans.length === 0}
                     >
-                      <option value="month">1 месяц</option>
-                      <option value="half_year">6 месяцев</option>
-                      <option value="year">12 месяцев</option>
+                      <option value="" disabled>Выберите тариф</option>
+                      {plans.map((p) => (
+                        <option key={p.code} value={p.code}>
+                          {p.label} — {formatMoney(p.amount)}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
