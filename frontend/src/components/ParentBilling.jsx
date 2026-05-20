@@ -9,11 +9,6 @@ const formatDateTime = (value) => {
   return new Date(value).toLocaleString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 };
 
-const formatDateShort = (value) => {
-  if (!value) return '-';
-  return new Date(value).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' });
-};
-
 const INTENT_STATUS = {
   pending: { label: 'Ожидает', color: '#d97706', bg: '#fef3c7' },
   paid: { label: 'Оплачен', color: '#16a34a', bg: '#ecfdf5' },
@@ -85,16 +80,13 @@ export const ParentBilling = () => {
         <div className="d-flex flex-column gap-3">
           {billingData.map((item) => {
             const sub = item.subscription;
-            const isPeriod = sub?.valid_from && sub?.valid_until;
             const remainingLessons = Number(sub?.remaining_lessons ?? 0);
-            const isLowBalance = !isPeriod && Boolean(sub?.is_active) && remainingLessons < LOW_BALANCE_THRESHOLD;
-            const daysLeft = isPeriod && sub?.is_active ? Math.ceil((new Date(sub.valid_until) - new Date()) / 86400000) : null;
-            const isPeriodExpiring = daysLeft !== null && daysLeft <= 7 && daysLeft >= 0;
-            const needsAttention = isLowBalance || isPeriodExpiring;
+            const isLowBalance = Boolean(sub?.is_active) && remainingLessons < LOW_BALANCE_THRESHOLD;
+            const needsAttention = isLowBalance;
 
             const statusColor = sub?.is_active ? (needsAttention ? '#d97706' : '#16a34a') : '#6b7280';
             const statusBg = sub?.is_active ? (needsAttention ? '#fef3c7' : '#ecfdf5') : '#f3f4f6';
-            const statusLabel = sub?.is_active ? (isLowBalance ? 'Мало занятий' : isPeriodExpiring ? 'Скоро истекает' : 'Активен') : 'Нет абонемента';
+            const statusLabel = sub?.is_active ? (isLowBalance ? 'Мало занятий' : 'Активен') : 'Нет абонемента';
 
             const payments = Array.isArray(item.payments) ? item.payments : [];
             const intents = Array.isArray(item.payment_intents) ? item.payment_intents : [];
@@ -111,45 +103,23 @@ export const ParentBilling = () => {
                   {/* Баланс */}
                   {sub ? (
                     <div className="rounded-3 p-3 mb-3" style={{ background: '#f8f9fb' }}>
-                      {isPeriod ? (
-                        <div>
-                          <div className="d-flex flex-wrap gap-3">
-                            <div>
-                              <div className="text-muted small">Период</div>
-                              <div className="fw-semibold">{formatDateShort(sub.valid_from)} — {formatDateShort(sub.valid_until)}</div>
-                            </div>
-                            {daysLeft !== null && (
-                              <div>
-                                <div className="text-muted small">Осталось дней</div>
-                                <div className="fw-semibold" style={{ color: isPeriodExpiring ? '#d97706' : '#111827' }}>{Math.max(0, daysLeft)}</div>
-                              </div>
-                            )}
+                      <div>
+                        <div className="d-flex flex-wrap gap-3">
+                          <div>
+                            <div className="text-muted small">Всего занятий</div>
+                            <div className="fw-semibold">{sub.total_lessons}</div>
                           </div>
-                          {isPeriodExpiring && (
-                            <div className="mt-2 rounded-3 p-2 small fw-semibold" style={{ background: '#fffbeb', color: '#b45309' }}>
-                              Абонемент скоро истекает. Обратитесь в школу для продления.
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div>
-                          <div className="d-flex flex-wrap gap-3">
-                            <div>
-                              <div className="text-muted small">Всего занятий</div>
-                              <div className="fw-semibold">{sub.total_lessons}</div>
-                            </div>
-                            <div>
-                              <div className="text-muted small">Осталось</div>
-                              <div className="fw-semibold" style={{ color: isLowBalance ? '#dc2626' : '#111827', fontSize: '1.1rem' }}>{sub.remaining_lessons}</div>
-                            </div>
+                          <div>
+                            <div className="text-muted small">Остаток занятий</div>
+                            <div className="fw-semibold" style={{ color: isLowBalance ? '#dc2626' : '#111827', fontSize: '1.1rem' }}>{sub.remaining_lessons}</div>
                           </div>
-                          {isLowBalance && (
-                            <div className="mt-2 rounded-3 p-2 small fw-semibold" style={{ background: '#fef2f2', color: '#dc2626' }}>
-                              Мало занятий. Обратитесь в школу для пополнения.
-                            </div>
-                          )}
                         </div>
-                      )}
+                        {isLowBalance && (
+                          <div className="mt-2 rounded-3 p-2 small fw-semibold" style={{ background: '#fef2f2', color: '#dc2626' }}>
+                            Мало занятий. Обратитесь в школу для пополнения.
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <div className="rounded-3 p-3 mb-3 text-muted small" style={{ background: '#f8f9fb' }}>
