@@ -185,7 +185,6 @@ export const AdminTeacherDetail = () => {
   const [bonus, setBonus] = useState(0);
   const [penalty, setPenalty] = useState(0);
 
-  const [modalLesson, setModalLesson] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [conductLesson, setConductLesson] = useState(null);
   const [conductGroup, setConductGroup] = useState(null);
@@ -195,34 +194,33 @@ export const AdminTeacherDetail = () => {
     setModalLoading(true);
     try {
       const full = await api.getLesson(lessonId);
-      setModalLesson(full);
       if (full.group) {
         try { setConductGroup(await api.getGroup(full.group)); } catch { setConductGroup(null); }
       }
+      setConductLesson(full);
     } catch {
-      setModalLesson(null);
+      setConductLesson(null);
     } finally {
       setModalLoading(false);
     }
   }, []);
 
   const handleDeleteLesson = useCallback(async () => {
-    if (!modalLesson || !window.confirm('Удалить это занятие? Это действие нельзя отменить.')) return;
-    setDeleting(modalLesson.id);
+    if (!conductLesson || !window.confirm('Удалить это занятие? Это действие нельзя отменить.')) return;
+    setDeleting(conductLesson.id);
     try {
-      await api.deleteLesson(modalLesson.id);
-      setModalLesson(null);
+      await api.deleteLesson(conductLesson.id);
+      setConductLesson(null);
       loadLessons();
     } catch (e) {
       setError(e.message || 'Ошибка удаления');
     } finally {
       setDeleting(null);
     }
-  }, [modalLesson]);
+  }, [conductLesson]);
 
   const handleConductSaved = useCallback(() => {
     setConductLesson(null);
-    setModalLesson(null);
     loadLessons();
   }, []);
 
@@ -541,22 +539,14 @@ export const AdminTeacherDetail = () => {
           )}
         </>
       )}
-      {modalLesson && !conductLesson && (
-        <LessonInfoModal
-          lesson={modalLesson}
-          onClose={() => setModalLesson(null)}
-          onConduct={() => setConductLesson(modalLesson)}
-          onDelete={handleDeleteLesson}
-          deleting={deleting === modalLesson.id}
-          navigate={navigate}
-        />
-      )}
       {conductLesson && (
         <ConductLessonModal
           lesson={conductLesson}
           group={conductGroup}
           onClose={() => setConductLesson(null)}
           onSaved={handleConductSaved}
+          onDelete={handleDeleteLesson}
+          deleting={deleting === conductLesson.id}
         />
       )}
     </AdminLayout>

@@ -30,7 +30,7 @@ const formatDateTime = (v) =>
  *  - onClose(): закрыть
  *  - onSaved(): успешно сохранено
  */
-export const ConductLessonModal = ({ lesson, group, onClose, onSaved }) => {
+export const ConductLessonModal = ({ lesson, group, onClose, onSaved, onDelete, deleting }) => {
   const navigate = useNavigate();
   const { hasRole } = useAuth();
   const prefix = hasRole('admin') ? '/admin' : '/teacher';
@@ -318,6 +318,16 @@ export const ConductLessonModal = ({ lesson, group, onClose, onSaved }) => {
               className="modal-footer border-0 sticky-bottom"
               style={{ background: '#fff', borderTop: '1px solid #e5e7eb' }}
             >
+              {onDelete && (
+                <button
+                  type="button"
+                  className="btn btn-outline-danger rounded-pill px-4 me-auto"
+                  onClick={onDelete}
+                  disabled={saving || deleting}
+                >
+                  {deleting ? 'Удаляем…' : 'Удалить'}
+                </button>
+              )}
               <button
                 type="button"
                 className="btn btn-light border rounded-pill px-4"

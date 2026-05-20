@@ -56,7 +56,6 @@ export const AdminScheduleOverview = ({ embedded = false }) => {
   const [teacherFilter, setTeacherFilter] = useState('');
 
   const [conductLesson, setConductLesson] = useState(null);
-  const [infoLesson, setInfoLesson] = useState(null);
   const [deleting, setDeleting] = useState(null);
 
   const loadData = async () => {
@@ -129,7 +128,7 @@ export const AdminScheduleOverview = ({ embedded = false }) => {
     try {
       await api.deleteLesson(lesson.id);
       setLessons((prev) => prev.filter((l) => l.id !== lesson.id));
-      setInfoLesson(null);
+      setConductLesson(null);
       setSuccess('Занятие удалено.');
       setTimeout(() => setSuccess(''), 3000);
     } catch (e) {
@@ -141,7 +140,6 @@ export const AdminScheduleOverview = ({ embedded = false }) => {
 
   const handleConductSaved = async () => {
     setConductLesson(null);
-    setInfoLesson(null);
     setSuccess('Урок сохранён.');
     await loadData();
     setTimeout(() => setSuccess(''), 3000);
@@ -242,7 +240,7 @@ export const AdminScheduleOverview = ({ embedded = false }) => {
                             groupMap={groupMap}
                             teacherMap={teacherMap}
                             teacherLabel={teacherLabel}
-                            onClick={() => setInfoLesson(l)}
+                            onClick={() => setConductLesson(l)}
                             navigate={navigate}
                           />
                         ))}
@@ -256,21 +254,6 @@ export const AdminScheduleOverview = ({ embedded = false }) => {
         </div>
       )}
 
-      {/* Info modal */}
-      {infoLesson && !conductLesson && (
-        <AdminLessonInfoModal
-          lesson={infoLesson}
-          groupMap={groupMap}
-          teacherMap={teacherMap}
-          teacherLabel={teacherLabel}
-          onClose={() => setInfoLesson(null)}
-          onConduct={() => setConductLesson(infoLesson)}
-          onDelete={() => handleDelete(infoLesson)}
-          deleting={deleting === infoLesson.id}
-          navigate={navigate}
-        />
-      )}
-
       {/* Conduct modal */}
       {conductLesson && (
         <ConductLessonModal
@@ -278,6 +261,8 @@ export const AdminScheduleOverview = ({ embedded = false }) => {
           group={groupMap.get(conductLesson.group)}
           onClose={() => setConductLesson(null)}
           onSaved={handleConductSaved}
+          onDelete={() => handleDelete(conductLesson)}
+          deleting={deleting === conductLesson.id}
         />
       )}
     </div>
