@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { AdminLayout } from './AdminLayout';
 import { IconRefresh, IconAlert } from './KidIcons';
@@ -32,6 +33,7 @@ const formatRate = (value) => {
 };
 
 export default function AdminChurnRisk() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -139,7 +141,20 @@ export default function AdminChurnRisk() {
           {filteredRows.map((row) => {
             const meta = RISK_META[row.risk_level] || RISK_META.low;
             return (
-              <div key={row.student_id} className="card border-0 shadow-sm rounded-4">
+              <div
+                key={row.student_id}
+                className="card border-0 shadow-sm rounded-4"
+                role="button"
+                tabIndex={0}
+                style={{ cursor: 'pointer' }}
+                onClick={() => navigate(`/admin/students/${row.student_id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/admin/students/${row.student_id}`);
+                  }
+                }}
+              >
                 <div className="card-body p-3">
                   <div className="d-flex flex-wrap align-items-start gap-3">
                     {/* Name */}
