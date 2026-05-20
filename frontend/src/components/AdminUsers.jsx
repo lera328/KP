@@ -4,6 +4,7 @@ import api from '../services/api';
 import { AdminLayout } from './AdminLayout';
 import { useAuth } from '../context/AuthContext';
 import { IconPlus, IconRefresh, IconSearch } from './KidIcons';
+import { SearchableSelect } from './SearchableSelect';
 
 const SearchableMultiSelect = ({ label, items, selectedIds, onToggle, loading, placeholder, emptyText, renderLabel }) => {
   const [open, setOpen] = useState(false);
@@ -927,37 +928,28 @@ export const AdminUsers = () => {
                       <>
                         <div className="mb-3">
                           <label className="form-label">Группа ученика</label>
-                          <select
-                            className="form-select"
-                            name="group_id"
+                          <SearchableSelect
+                            options={groups.map((g) => ({ value: g.id, label: g.name }))}
                             value={createForm.group_id}
-                            onChange={updateCreateField}
+                            onChange={(v) => setCreateForm((prev) => ({ ...prev, group_id: v }))}
                             disabled={savingCreate}
-                          >
-                            <option value="">Выберите группу</option>
-                            {groups.map((group) => (
-                              <option key={`create-group-${group.id}`} value={group.id}>
-                                {group.name}
-                              </option>
-                            ))}
-                          </select>
+                            placeholder="Выберите группу"
+                          />
                         </div>
                         <div className="mb-3">
                           <label className="form-label">Родитель</label>
-                          <select
-                            className="form-select"
-                            name="parent_id"
+                          <SearchableSelect
+                            options={parentUsers.map((p) => ({
+                              value: p.id,
+                              label: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.username,
+                            }))}
                             value={createForm.parent_id}
-                            onChange={updateCreateField}
+                            onChange={(v) => setCreateForm((prev) => ({ ...prev, parent_id: v }))}
                             disabled={savingCreate}
-                          >
-                            <option value="">— не выбран —</option>
-                            {parentUsers.map((p) => (
-                              <option key={`create-parent-${p.id}`} value={p.id}>
-                                {`${p.first_name || ''} ${p.last_name || ''}`.trim() || p.username}
-                              </option>
-                            ))}
-                          </select>
+                            allowClear
+                            clearLabel="— не выбран —"
+                            placeholder="— не выбран —"
+                          />
                         </div>
                       </>
                     ) : null}
@@ -1129,37 +1121,28 @@ export const AdminUsers = () => {
                       <>
                         <div className="mb-3">
                           <label className="form-label">Группа ученика</label>
-                          <select
-                            className="form-select"
-                            name="group_id"
+                          <SearchableSelect
+                            options={groups.map((g) => ({ value: g.id, label: g.name }))}
                             value={editForm.group_id}
-                            onChange={updateEditField}
+                            onChange={(v) => setEditForm((prev) => ({ ...prev, group_id: v }))}
                             disabled={savingEdit}
-                          >
-                            <option value="">Выберите группу</option>
-                            {groups.map((group) => (
-                              <option key={`edit-group-${group.id}`} value={group.id}>
-                                {group.name}
-                              </option>
-                            ))}
-                          </select>
+                            placeholder="Выберите группу"
+                          />
                         </div>
                         <div className="mb-3">
                           <label className="form-label">Родитель</label>
-                          <select
-                            className="form-select"
-                            name="parent_id"
+                          <SearchableSelect
+                            options={parentUsers.map((p) => ({
+                              value: p.id,
+                              label: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.username,
+                            }))}
                             value={editForm.parent_id}
-                            onChange={updateEditField}
+                            onChange={(v) => setEditForm((prev) => ({ ...prev, parent_id: v }))}
                             disabled={savingEdit}
-                          >
-                            <option value="">— не выбран —</option>
-                            {parentUsers.map((p) => (
-                              <option key={`edit-parent-${p.id}`} value={p.id}>
-                                {`${p.first_name || ''} ${p.last_name || ''}`.trim() || p.username}
-                              </option>
-                            ))}
-                          </select>
+                            allowClear
+                            clearLabel="— не выбран —"
+                            placeholder="— не выбран —"
+                          />
                         </div>
                       </>
                     ) : null}

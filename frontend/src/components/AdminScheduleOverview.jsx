@@ -4,6 +4,7 @@ import api from '../services/api';
 import { AdminLayout } from './AdminLayout';
 import { ConductLessonModal } from './ConductLessonModal';
 import { IconRefresh, IconCalendar } from './KidIcons';
+import { SearchableSelect } from './SearchableSelect';
 
 const WEEKDAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
@@ -157,27 +158,31 @@ export const AdminScheduleOverview = ({ embedded = false, lockedTeacherId = null
           Расписание
         </h1>
         <div className="ms-auto d-flex gap-2 align-items-center" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
-          <select
-            className="form-select form-select-sm rounded-pill"
-            value={groupFilter}
-            onChange={(e) => setGroupFilter(e.target.value)}
-            disabled={loading}
-            style={{ width: 'auto', minWidth: 110, flex: '0 0 auto' }}
-          >
-            <option value="">Все группы</option>
-            {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-          </select>
-          {!lockedTeacherId && (
-            <select
-              className="form-select form-select-sm rounded-pill"
-              value={teacherFilter}
-              onChange={(e) => setTeacherFilter(e.target.value)}
+          <div style={{ minWidth: 160, flex: '0 0 auto' }}>
+            <SearchableSelect
+              size="sm"
+              options={groups.map((g) => ({ value: g.id, label: g.name }))}
+              value={groupFilter}
+              onChange={setGroupFilter}
               disabled={loading}
-              style={{ width: 'auto', minWidth: 130, flex: '0 0 auto' }}
-            >
-              <option value="">Все преподаватели</option>
-              {teachers.map((t) => <option key={t.id} value={t.id}>{teacherLabel(t)}</option>)}
-            </select>
+              allowClear
+              clearLabel="Все группы"
+              placeholder="Все группы"
+            />
+          </div>
+          {!lockedTeacherId && (
+            <div style={{ minWidth: 200, flex: '0 0 auto' }}>
+              <SearchableSelect
+                size="sm"
+                options={teachers.map((t) => ({ value: t.id, label: teacherLabel(t) }))}
+                value={teacherFilter}
+                onChange={setTeacherFilter}
+                disabled={loading}
+                allowClear
+                clearLabel="Все преподаватели"
+                placeholder="Все преподаватели"
+              />
+            </div>
           )}
 
           <div className="btn-group flex-shrink-0">

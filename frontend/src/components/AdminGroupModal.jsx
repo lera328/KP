@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
+import { SearchableSelect } from './SearchableSelect';
 
 const WEEKDAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
@@ -339,17 +340,13 @@ export const AdminGroupModal = ({
                     </div>
                     <div className="col-md-6">
                       <label className="form-label">Локация *</label>
-                      <select
-                        className="form-select"
+                      <SearchableSelect
+                        options={locations.map((loc) => ({ value: loc.id, label: loc.name }))}
                         value={form.location}
-                        onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
+                        onChange={(v) => setForm((p) => ({ ...p, location: v }))}
                         disabled={savingInfo}
-                      >
-                        <option value="">— выберите локацию —</option>
-                        {locations.map((loc) => (
-                          <option key={loc.id} value={loc.id}>{loc.name}</option>
-                        ))}
-                      </select>
+                        placeholder="— выберите локацию —"
+                      />
                     </div>
                     <div className="col-12">
                       <div className="form-check">
@@ -441,19 +438,13 @@ export const AdminGroupModal = ({
                   <form onSubmit={handleSetupSchedule} className="row g-3">
                     <div className="col-md-5">
                       <label className="form-label">Преподаватель</label>
-                      <select
-                        className="form-select"
+                      <SearchableSelect
+                        options={teachers.map((t) => ({ value: t.id, label: userLabel(t) }))}
                         value={scheduleForm.teacher}
-                        onChange={(e) =>
-                          setScheduleForm((p) => ({ ...p, teacher: e.target.value }))
-                        }
+                        onChange={(v) => setScheduleForm((p) => ({ ...p, teacher: v }))}
                         disabled={savingSchedule}
-                      >
-                        <option value="">— выберите —</option>
-                        {teachers.map((t) => (
-                          <option key={t.id} value={t.id}>{userLabel(t)}</option>
-                        ))}
-                      </select>
+                        placeholder="— выберите —"
+                      />
                     </div>
                     <div className="col-md-5">
                       <label className="form-label">Стартовое занятие</label>
@@ -490,19 +481,13 @@ export const AdminGroupModal = ({
                       <form onSubmit={handleAddExtra} className="row g-3">
                         <div className="col-md-5">
                           <label className="form-label">Преподаватель</label>
-                          <select
-                            className="form-select"
+                          <SearchableSelect
+                            options={teachers.map((t) => ({ value: t.id, label: userLabel(t) }))}
                             value={extraForm.teacher}
-                            onChange={(e) =>
-                              setExtraForm((p) => ({ ...p, teacher: e.target.value }))
-                            }
+                            onChange={(v) => setExtraForm((p) => ({ ...p, teacher: v }))}
                             disabled={savingExtra}
-                          >
-                            <option value="">— выберите —</option>
-                            {teachers.map((t) => (
-                              <option key={t.id} value={t.id}>{userLabel(t)}</option>
-                            ))}
-                          </select>
+                            placeholder="— выберите —"
+                          />
                         </div>
                         <div className="col-md-5">
                           <label className="form-label">Дата и время</label>
@@ -562,16 +547,13 @@ export const AdminGroupModal = ({
                                 <td>{topicMap.get(lesson.topic)?.title || '-'}</td>
                                 <td>
                                   {isEditing ? (
-                                    <select
-                                      className="form-select form-select-sm"
+                                    <SearchableSelect
+                                      size="sm"
+                                      options={teachers.map((t) => ({ value: t.id, label: userLabel(t) }))}
                                       value={editTeacher}
-                                      onChange={(e) => setEditTeacher(e.target.value)}
+                                      onChange={setEditTeacher}
                                       disabled={savingLessonEdit}
-                                    >
-                                      {teachers.map((t) => (
-                                        <option key={t.id} value={t.id}>{userLabel(t)}</option>
-                                      ))}
-                                    </select>
+                                    />
                                   ) : (
                                     userLabel(teacher)
                                   )}

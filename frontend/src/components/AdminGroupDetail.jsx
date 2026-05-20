@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
 import { AdminLayout } from './AdminLayout';
 import { ConductLessonModal } from './ConductLessonModal';
+import { SearchableSelect } from './SearchableSelect';
 
 const WEEKDAY_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
@@ -315,10 +316,13 @@ export const AdminGroupDetail = () => {
                   <form onSubmit={handleSetupSchedule} className="row g-3">
                     <div className="col-md-5">
                       <label className="form-label">Преподаватель</label>
-                      <select className="form-select" value={scheduleForm.teacher} onChange={(e) => setScheduleForm((p) => ({ ...p, teacher: e.target.value }))} disabled={savingSchedule}>
-                        <option value="">— выберите —</option>
-                        {teachers.map((t) => <option key={t.id} value={t.id}>{fullName(t)}</option>)}
-                      </select>
+                      <SearchableSelect
+                        options={teachers.map((t) => ({ value: t.id, label: fullName(t) }))}
+                        value={scheduleForm.teacher}
+                        onChange={(v) => setScheduleForm((p) => ({ ...p, teacher: v }))}
+                        disabled={savingSchedule}
+                        placeholder="— выберите —"
+                      />
                     </div>
                     <div className="col-md-5">
                       <label className="form-label">Стартовое занятие</label>
@@ -339,10 +343,13 @@ export const AdminGroupDetail = () => {
                   <form onSubmit={handleAddExtra} className="row g-3">
                     <div className="col-md-5">
                       <label className="form-label">Преподаватель</label>
-                      <select className="form-select" value={extraForm.teacher} onChange={(e) => setExtraForm((p) => ({ ...p, teacher: e.target.value }))} disabled={savingExtra}>
-                        <option value="">— выберите —</option>
-                        {teachers.map((t) => <option key={t.id} value={t.id}>{fullName(t)}</option>)}
-                      </select>
+                      <SearchableSelect
+                        options={teachers.map((t) => ({ value: t.id, label: fullName(t) }))}
+                        value={extraForm.teacher}
+                        onChange={(v) => setExtraForm((p) => ({ ...p, teacher: v }))}
+                        disabled={savingExtra}
+                        placeholder="— выберите —"
+                      />
                     </div>
                     <div className="col-md-5">
                       <label className="form-label">Дата и время</label>

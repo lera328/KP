@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import { AdminLayout } from './AdminLayout';
 import { IconRefresh, IconChart } from './KidIcons';
+import { SearchableSelect } from './SearchableSelect';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -46,6 +47,7 @@ export default function AdminAnalytics() {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
+  const [breakdownGroupId, setBreakdownGroupId] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -135,12 +137,14 @@ export default function AdminAnalytics() {
             </div>
             <div className="col-md-4">
               <label className="form-label text-muted small mb-1">Группа</label>
-              <select className="form-select rounded-3" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-                <option value="">Все группы</option>
-                {groupsOptions.map((g) => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
+              <SearchableSelect
+                options={groupsOptions.map((g) => ({ value: g.id, label: g.name }))}
+                value={groupId}
+                onChange={setGroupId}
+                allowClear
+                clearLabel="Все группы"
+                placeholder="Все группы"
+              />
             </div>
             <div className="col-md-2">
               <button type="submit" className="btn btn-dark rounded-pill w-100 d-flex align-items-center justify-content-center gap-2" disabled={loading}>
@@ -184,9 +188,22 @@ export default function AdminAnalytics() {
           {/* Groups breakdown */}
           <div className="card border-0 shadow-sm rounded-4">
             <div className="card-body p-0">
-              <div className="px-3 py-2 border-bottom d-flex align-items-center justify-content-between">
+              <div className="px-3 py-2 border-bottom d-flex align-items-center justify-content-between gap-2 flex-wrap">
                 <div className="fw-semibold">Разбивка по группам</div>
-                <div className="text-muted small">Уроков: {totalLessons}</div>
+                <div className="d-flex align-items-center gap-2 flex-wrap">
+                  <div style={{ minWidth: 220 }}>
+                    <SearchableSelect
+                      size="sm"
+                      options={groups.map((g) => ({ value: g.group_id, label: g.group_name }))}
+                      value={breakdownGroupId}
+                      onChange={setBreakdownGroupId}
+                      allowClear
+                      clearLabel="Все группы"
+                      placeholder="Выберите группу"
+                    />
+                  </div>
+                  <div className="text-muted small">Уроков: {totalLessons}</div>
+                </div>
               </div>
               <div className="table-responsive">
                 <table className="table table-hover mb-0 align-middle">
@@ -200,22 +217,29 @@ export default function AdminAnalytics() {
                     </tr>
                   </thead>
                   <tbody>
-                    {groups.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="text-center text-muted py-4">
-                          За выбранный период данных нет.
-                        </td>
-                      </tr>
-                    )}
-                    {groups.map((row) => (
-                      <tr key={row.group_id}>
-                        <td className="fw-semibold">{row.group_name}</td>
-                        <td className="text-end">{row.lessons_count}</td>
-                        <td className="text-end">{row.students_count}</td>
-                        <td className="text-end">{formatRate(row.attendance_rate)}</td>
-                        <td className="text-end">{formatGrade(row.average_grade)}</td>
-                      </tr>
-                    ))}
+                    {(() => {
+                      const visible = breakdownGroupId
+                        ? groups.filter((g) => String(g.group_id) === String(breakdownGroupId))
+                        : groups;
+                      if (visible.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={5} className="text-center text-muted py-4">
+                              За выбранный период данных нет.
+                            </td>
+                          </tr>
+                        );
+                      }
+                      return visible.map((row) => (
+                        <tr key={row.group_id}>
+                          <td className="fw-semibold">{row.group_name}</td>
+                          <td className="text-end">{row.lessons_count}</td>
+                          <td className="text-end">{row.students_count}</td>
+                          <td className="text-end">{formatRate(row.attendance_rate)}</td>
+                          <td className="text-end">{formatGrade(row.average_grade)}</td>
+                        </tr>
+                      ));
+                    })()}
                   </tbody>
                 </table>
               </div>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import { AdminLayout } from './AdminLayout';
 import { IconPlus, IconRefresh, IconSearch, IconWallet } from './KidIcons';
+import { SearchableSelect } from './SearchableSelect';
 
 const STATUS_META = {
   pending: { label: 'Ожидает', bg: '#fef3c7', color: '#b45309' },
@@ -353,21 +354,16 @@ export const AdminFinance = () => {
       {/* Filters */}
       <div className="card border-0 shadow-sm rounded-4 mb-3">
         <div className="card-body p-3 d-flex flex-wrap align-items-center gap-2">
-          <div className="position-relative" style={{ minWidth: 220 }}>
-            <span className="position-absolute text-muted" style={{ left: 12, top: '50%', transform: 'translateY(-50%)' }}>
-              <IconSearch width={16} height={16} />
-            </span>
-            <select
-              className="form-select rounded-pill ps-5"
+          <div style={{ minWidth: 240 }}>
+            <SearchableSelect
+              options={students.map((s) => ({ value: s.id, label: s.name }))}
               value={studentFilter}
-              onChange={(event) => setStudentFilter(event.target.value)}
+              onChange={setStudentFilter}
               disabled={loading}
-            >
-              <option value="">Все ученики</option>
-              {students.map((student) => (
-                <option key={student.id} value={student.id}>{student.name}</option>
-              ))}
-            </select>
+              allowClear
+              clearLabel="Все ученики"
+              placeholder="Все ученики"
+            />
           </div>
           {studentFilter ? (
             <button
@@ -461,37 +457,29 @@ export const AdminFinance = () => {
                 <div className="modal-body px-4 pb-2">
                   <div className="mb-3">
                     <label className="form-label">Ученик</label>
-                    <select
-                      className="form-select rounded-3"
+                    <SearchableSelect
+                      options={studentUsers.map((u) => ({
+                        value: u.id,
+                        label: (u.first_name + ' ' + u.last_name).trim() || u.username,
+                      }))}
                       value={formStudentId}
-                      onChange={(e) => setFormStudentId(e.target.value)}
-                      required
+                      onChange={setFormStudentId}
                       disabled={formSubmitting}
-                      autoFocus
-                    >
-                      <option value="">Выберите ученика</option>
-                      {studentUsers.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {(u.first_name + ' ' + u.last_name).trim() || u.username}
-                        </option>
-                      ))}
-                    </select>
+                      placeholder="Выберите ученика"
+                    />
                   </div>
                   <div className="mb-1">
                     <label className="form-label">Тариф</label>
-                    <select
-                      className="form-select rounded-3"
+                    <SearchableSelect
+                      options={plans.map((p) => ({
+                        value: p.code,
+                        label: `${p.label} — ${formatMoney(p.amount)}`,
+                      }))}
                       value={formPlan}
-                      onChange={(e) => setFormPlan(e.target.value)}
+                      onChange={setFormPlan}
                       disabled={formSubmitting || plans.length === 0}
-                    >
-                      <option value="" disabled>Выберите тариф</option>
-                      {plans.map((p) => (
-                        <option key={p.code} value={p.code}>
-                          {p.label} — {formatMoney(p.amount)}
-                        </option>
-                      ))}
-                    </select>
+                      placeholder="Выберите тариф"
+                    />
                   </div>
                 </div>
                 <div className="modal-footer border-0 px-4 pb-4 pt-2">

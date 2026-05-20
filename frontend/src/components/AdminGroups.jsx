@@ -4,6 +4,7 @@ import api from '../services/api';
 import { AdminLayout } from './AdminLayout';
 import { AdminGroupModal } from './AdminGroupModal';
 import { IconPlus, IconRefresh, IconSearch, IconUsers, IconCalendar } from './KidIcons';
+import { SearchableSelect } from './SearchableSelect';
 
 const WEEKDAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
@@ -297,18 +298,18 @@ export const AdminGroups = () => {
               disabled={loading}
             />
           </div>
-          <select
-            className="form-select form-select-sm rounded-pill"
-            value={filters.location}
-            onChange={(e) => setFilters((prev) => ({ ...prev, location: e.target.value }))}
-            disabled={loading}
-            style={{ minWidth: 140, maxWidth: 180 }}
-          >
-            <option value="">Все локации</option>
-            {locations.map((loc) => (
-              <option key={loc.id} value={loc.id}>{loc.name}</option>
-            ))}
-          </select>
+          <div style={{ minWidth: 160, maxWidth: 200 }}>
+            <SearchableSelect
+              size="sm"
+              options={locations.map((loc) => ({ value: loc.id, label: loc.name }))}
+              value={filters.location}
+              onChange={(v) => setFilters((prev) => ({ ...prev, location: v }))}
+              disabled={loading}
+              allowClear
+              clearLabel="Все локации"
+              placeholder="Все локации"
+            />
+          </div>
           <div className="d-flex gap-2 flex-wrap">
             {STATUS_PILLS.map((pill) => {
               const active = filters.status === pill.value;
@@ -447,17 +448,13 @@ export const AdminGroups = () => {
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Локация *</label>
-                    <select
-                      className="form-select rounded-3"
+                    <SearchableSelect
+                      options={locations.map((loc) => ({ value: loc.id, label: loc.name }))}
                       value={groupForm.location}
-                      onChange={(event) => setGroupForm((prev) => ({ ...prev, location: event.target.value }))}
+                      onChange={(v) => setGroupForm((prev) => ({ ...prev, location: v }))}
                       disabled={savingGroup}
-                    >
-                      <option value="">— выберите локацию —</option>
-                      {locations.map((loc) => (
-                        <option key={loc.id} value={loc.id}>{loc.name}</option>
-                      ))}
-                    </select>
+                      placeholder="— выберите локацию —"
+                    />
                   </div>
                   <SearchableMultiSelect
                     label="Преподаватели"

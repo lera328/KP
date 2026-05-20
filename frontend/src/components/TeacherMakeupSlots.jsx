@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import { AppLayout, teacherNavItems } from './AppLayout';
+import { SearchableSelect } from './SearchableSelect';
 
 const HOUR_FROM = 9;
 const HOUR_TO = 21;
@@ -382,18 +383,15 @@ export const TeacherMakeupSlots = () => {
             <label className="form-label small text-muted mb-1">
               Локация для новых слотов
             </label>
-            <select
-              className="form-select form-select-sm rounded-pill"
-              value={defaultLocationId}
-              onChange={(e) => setDefaultLocationId(e.target.value)}
-              style={{ minWidth: 180 }}
-            >
-              {locations.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
+            <div style={{ minWidth: 200 }}>
+              <SearchableSelect
+                size="sm"
+                options={locations.map((l) => ({ value: l.id, label: l.name }))}
+                value={defaultLocationId}
+                onChange={setDefaultLocationId}
+                placeholder="Выберите локацию"
+              />
+            </div>
           </div>
 
           <div>
