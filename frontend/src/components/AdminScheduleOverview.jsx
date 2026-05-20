@@ -43,7 +43,7 @@ const STATUS_STYLE = {
   overdue:   { bg: '#fef3c7', border: '#d97706', dot: '#d97706', label: 'Не проведён' },
 };
 
-export const AdminScheduleOverview = ({ embedded = false }) => {
+export const AdminScheduleOverview = ({ embedded = false, lockedTeacherId = null }) => {
   const navigate = useNavigate();
   const [groups, setGroups] = useState([]);
   const [teachers, setTeachers] = useState([]);
@@ -53,7 +53,7 @@ export const AdminScheduleOverview = ({ embedded = false }) => {
   const [success, setSuccess] = useState('');
   const [currentWeekStart, setCurrentWeekStart] = useState(() => getWeekRange().monday);
   const [groupFilter, setGroupFilter] = useState('');
-  const [teacherFilter, setTeacherFilter] = useState('');
+  const [teacherFilter, setTeacherFilter] = useState(lockedTeacherId ? String(lockedTeacherId) : '');
 
   const [conductLesson, setConductLesson] = useState(null);
   const [deleting, setDeleting] = useState(null);
@@ -167,16 +167,18 @@ export const AdminScheduleOverview = ({ embedded = false }) => {
             <option value="">Все группы</option>
             {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
-          <select
-            className="form-select form-select-sm rounded-pill"
-            value={teacherFilter}
-            onChange={(e) => setTeacherFilter(e.target.value)}
-            disabled={loading}
-            style={{ width: 'auto', minWidth: 130, flex: '0 0 auto' }}
-          >
-            <option value="">Все преподаватели</option>
-            {teachers.map((t) => <option key={t.id} value={t.id}>{teacherLabel(t)}</option>)}
-          </select>
+          {!lockedTeacherId && (
+            <select
+              className="form-select form-select-sm rounded-pill"
+              value={teacherFilter}
+              onChange={(e) => setTeacherFilter(e.target.value)}
+              disabled={loading}
+              style={{ width: 'auto', minWidth: 130, flex: '0 0 auto' }}
+            >
+              <option value="">Все преподаватели</option>
+              {teachers.map((t) => <option key={t.id} value={t.id}>{teacherLabel(t)}</option>)}
+            </select>
+          )}
 
           <div className="btn-group flex-shrink-0">
             <button className="btn btn-light border rounded-start-pill px-2 btn-sm" onClick={() => navWeek(-1)} disabled={loading}>‹</button>

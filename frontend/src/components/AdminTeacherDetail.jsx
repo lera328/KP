@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
 import { AdminLayout } from './AdminLayout';
 import { ConductLessonModal } from './ConductLessonModal';
+import { AdminScheduleOverview } from './AdminScheduleOverview';
 
 /* ─── Модалка информации об уроке (с кнопкой редактирования) ─── */
 const LessonInfoModal = ({ lesson, onClose, onConduct, onDelete, deleting, navigate }) => {
@@ -190,6 +191,8 @@ export const AdminTeacherDetail = () => {
   const [conductGroup, setConductGroup] = useState(null);
   const [deleting, setDeleting] = useState(null);
 
+  const [activeTab, setActiveTab] = useState('schedule');
+
   const openLessonModal = useCallback(async (lessonId) => {
     setModalLoading(true);
     try {
@@ -376,6 +379,35 @@ export const AdminTeacherDetail = () => {
         </div>
       </div>
 
+      {/* Табы */}
+      <div className="d-flex gap-2 mb-3 border-bottom">
+        {[
+          { key: 'schedule', label: 'Расписание' },
+          { key: 'salary', label: 'Расчёт ЗП' },
+        ].map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            className="btn btn-link text-decoration-none px-3 py-2"
+            style={{
+              color: activeTab === t.key ? '#111827' : '#6b7280',
+              fontWeight: activeTab === t.key ? 600 : 500,
+              borderBottom: activeTab === t.key ? '2px solid #111827' : '2px solid transparent',
+              borderRadius: 0,
+              marginBottom: -1,
+            }}
+            onClick={() => setActiveTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'schedule' && (
+        <AdminScheduleOverview embedded lockedTeacherId={Number(id)} />
+      )}
+
+      {activeTab === 'salary' && (<>
       {/* Выбор периода */}
       <div className="card border-0 shadow-sm rounded-4 mb-3">
         <div className="card-body p-3">
@@ -539,6 +571,7 @@ export const AdminTeacherDetail = () => {
           )}
         </>
       )}
+      </>)}
       {conductLesson && (
         <ConductLessonModal
           lesson={conductLesson}
