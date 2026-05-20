@@ -4,6 +4,7 @@ import api from '../services/api';
 import { AppLayout, teacherNavItems } from './AppLayout';
 import { useAuth } from '../context/AuthContext';
 import { ConductLessonModal } from './ConductLessonModal';
+import TelegramConnect from './TelegramConnect';
 
 const formatTime = (v) =>
   v
@@ -166,6 +167,8 @@ export const TeacherHome = () => {
           Привет, {firstName}
         </h1>
       </div>
+
+      <TelegramConnect />
 
       {error && <div className="alert alert-danger rounded-3">{error}</div>}
       {success && <div className="alert alert-success rounded-3">{success}</div>}

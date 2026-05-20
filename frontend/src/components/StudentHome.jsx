@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { AppLayout, studentNavItems } from './AppLayout';
 import { useAuth } from '../context/AuthContext';
+import TelegramConnect from './TelegramConnect';
 
 const formatTime = (value) => {
   if (!value) return '';
@@ -119,6 +120,8 @@ export const StudentHome = () => {
           {firstName}
         </h1>
       </div>
+
+      <TelegramConnect />
 
       {loading ? (
         <HomeSkeleton />

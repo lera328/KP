@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { AppLayout, parentNavItems } from './AppLayout';
 import { useAuth } from '../context/AuthContext';
+import TelegramConnect from './TelegramConnect';
 
 const childName = (c) => `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.username;
 const childInitials = (c) => ((c.first_name?.[0] || '') + (c.last_name?.[0] || '')).toUpperCase() || '?';
@@ -50,6 +51,7 @@ export const ParentChildren = () => {
 
   return (
     <AppLayout title="КиберШкола — Дети" navItems={parentNavItems} kidMode>
+      <TelegramConnect />
       <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
         <h1 className="fw-semibold mb-0" style={{ fontSize: '1.75rem' }}>Мои дети</h1>
         <button

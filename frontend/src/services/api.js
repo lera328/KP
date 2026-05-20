@@ -672,6 +672,22 @@ class APIService {
     return this.request('/notifications/events/');
   }
 
+  async getTelegramStatus() {
+    return this.request('/notifications/telegram/status/');
+  }
+
+  async createTelegramLink() {
+    return this.request('/notifications/telegram/link/', { method: 'POST' });
+  }
+
+  async unlinkTelegram() {
+    return this.request('/notifications/telegram/unlink/', { method: 'POST' });
+  }
+
+  async sendTelegramTest() {
+    return this.request('/notifications/telegram/test/', { method: 'POST' });
+  }
+
   async getAdminPaymentIntents() {
     return this.request('/finance/payments/admin/intents/');
   }
