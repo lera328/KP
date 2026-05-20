@@ -57,16 +57,18 @@ def _project_image_paths(project: StudentProject) -> list:
 
 
 def _absolute_media_url(url: str) -> str:
+    """Возвращает относительный URL медиа (`/media/...`).
+
+    Браузер запросит его с того же origin, где nginx (prod) или Vite (dev)
+    проксируют /media/ на backend. Работает независимо от хоста и http/https.
+    """
     if not url:
         return ""
     if url.startswith("http://") or url.startswith("https://"):
         return url
-    base = getattr(settings, "PUBLIC_FRONTEND_URL", "").rstrip("/")
-    if not base:
-        return url
     if not url.startswith("/"):
         url = "/" + url
-    return f"{base}{url}"
+    return url
 
 
 def _project_image_urls(project: StudentProject, request: HttpRequest = None) -> list:
