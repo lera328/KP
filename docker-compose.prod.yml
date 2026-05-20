@@ -29,9 +29,12 @@ services:
         condition: service_healthy
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./backend/media:/usr/share/nginx/media:ro
       - backend_static:/usr/share/nginx/static:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
     command: ["nginx", "-g", "daemon off;"]
 
 volumes:
