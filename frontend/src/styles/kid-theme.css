@@ -226,6 +226,131 @@
   letter-spacing: 0.01em;
 }
 
+/* ---------- Мобильный Offcanvas ---------- */
+.kid-mobile-offcanvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  max-width: 85vw;
+  background: #ffffff;
+  z-index: 1045;
+  transform: translateX(-100%);
+  transition: transform 0.22s ease-out;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(17, 24, 39, 0.18);
+  display: none;
+}
+.kid-mobile-offcanvas.open {
+  transform: translateX(0);
+}
+.kid-mobile-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.45);
+  z-index: 1040;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  display: none;
+}
+.kid-mobile-backdrop.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (max-width: 767.98px) {
+  .kid-mobile-offcanvas,
+  .kid-mobile-backdrop {
+    display: block;
+  }
+}
+
+/* ---------- Bottom nav: скролл при большом числе пунктов ---------- */
+.kid-bottom-nav-grid {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.kid-bottom-nav-grid::-webkit-scrollbar {
+  display: none;
+}
+@media (max-width: 767.98px) {
+  /* При числе пунктов > 4 переключаем на горизонтальный flex */
+  .kid-bottom-nav-grid {
+    grid-template-columns: none;
+    display: flex;
+    flex-wrap: nowrap;
+  }
+  .kid-bottom-nav-item {
+    flex: 0 0 auto;
+    min-width: 72px;
+  }
+}
+
+/* ---------- Таблицы на мобильных ---------- */
+@media (max-width: 767.98px) {
+  /* Любая .table получает горизонтальный скролл, если не обёрнута */
+  .kid-shell .table {
+    font-size: 0.875rem;
+  }
+  .kid-shell .table-responsive {
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Уменьшить отступы ячеек */
+  .kid-shell .table > :not(caption) > * > * {
+    padding: 0.5rem 0.5rem;
+  }
+}
+
+/* ---------- Модалки на мобильных — fullscreen ---------- */
+@media (max-width: 575.98px) {
+  .modal-dialog:not(.modal-fullscreen) {
+    margin: 0;
+    max-width: 100%;
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+  }
+  .modal-dialog:not(.modal-fullscreen) .modal-content {
+    border-radius: 0;
+    min-height: 100%;
+    border: 0;
+  }
+  .modal-body {
+    padding: 1rem;
+  }
+}
+
+/* ---------- Контейнер на мобильных — меньше боковых отступов ---------- */
+@media (max-width: 575.98px) {
+  .kid-shell .container-fluid {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  .kid-shell h1 {
+    font-size: 1.5rem !important;
+  }
+  .kid-shell h2 {
+    font-size: 1.25rem !important;
+  }
+  .kid-shell .card-body {
+    padding: 1rem;
+  }
+}
+
+/* ---------- Touch-friendly минимальные размеры кнопок ---------- */
+@media (max-width: 767.98px) {
+  .kid-shell .btn:not(.btn-sm):not(.btn-lg):not(.btn-close) {
+    min-height: 40px;
+  }
+  .kid-shell .form-control,
+  .kid-shell .form-select {
+    min-height: 42px;
+    font-size: 16px; /* предотвращает zoom при focus в iOS */
+  }
+}
+
 /* Reduced motion — уважаем настройки пользователя */
 @media (prefers-reduced-motion: reduce) {
   .kid-shell *,

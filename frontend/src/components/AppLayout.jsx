@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { KID_ICONS, IconLogout } from './KidIcons';
@@ -57,10 +58,16 @@ export const AppLayout = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  const handleMobileNavigate = (path) => {
+    setMobileNavOpen(false);
+    navigate(path);
   };
 
   const isActive = (path) => {
@@ -86,7 +93,17 @@ export const AppLayout = ({
         }
       >
         <div className="container-fluid">
-          <span className="navbar-brand fw-semibold">{title}</span>
+          {navItems && navItems.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-light d-md-none me-2"
+              onClick={() => setMobileNavOpen(true)}
+              aria-label="Открыть меню"
+            >
+              <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>☰</span>
+            </button>
+          )}
+          <span className="navbar-brand fw-semibold text-truncate" style={{ maxWidth: '60vw' }}>{title}</span>
           <div className="ms-auto d-flex align-items-center">
             <span className="text-white me-3 d-none d-md-inline">
               {user?.first_name || user?.email}
@@ -110,7 +127,7 @@ export const AppLayout = ({
       <div className="container-fluid mt-4 kid-page">
         <div className="row g-3">
           {navItems && navItems.length > 0 && (
-            <div className={`col-md-3 col-lg-2 ${kidMode ? 'kid-top-nav-items' : ''}`}>
+            <div className={`col-md-3 col-lg-2 d-none d-md-block ${kidMode ? 'kid-top-nav-items' : ''}`}>
               <div
                 className={kidMode ? 'card border-0 rounded-4' : 'card'}
                 style={kidMode ? { boxShadow: 'var(--kid-shadow-sm)' } : undefined}
@@ -167,6 +184,56 @@ export const AppLayout = ({
           </div>
         </div>
       </div>
+
+      {/* Мобильный Offcanvas со списком разделов */}
+      {navItems && navItems.length > 0 && (
+        <>
+          <div
+            className={`kid-mobile-backdrop ${mobileNavOpen ? 'show' : ''}`}
+            onClick={() => setMobileNavOpen(false)}
+            aria-hidden="true"
+          />
+          <aside
+            className={`kid-mobile-offcanvas ${mobileNavOpen ? 'open' : ''}`}
+            aria-label="Боковое меню"
+            role="dialog"
+            aria-hidden={!mobileNavOpen}
+          >
+            <div className="d-flex align-items-center justify-content-between p-3 border-bottom">
+              <strong>Разделы</strong>
+              <button
+                type="button"
+                className="btn-close"
+                onClick={() => setMobileNavOpen(false)}
+                aria-label="Закрыть"
+              />
+            </div>
+            <div className="p-2 d-flex flex-column gap-1">
+              {navItems.map((item) => {
+                const Icon = item.iconKey ? KID_ICONS[item.iconKey] : null;
+                const active = isActive(item.path);
+                return (
+                  <button
+                    key={item.path}
+                    type="button"
+                    className="btn text-start rounded-3 px-3 py-2 d-flex align-items-center gap-3 border-0"
+                    style={{
+                      fontSize: '1rem',
+                      fontWeight: active ? 600 : 500,
+                      color: active ? '#111827' : '#4b5563',
+                      background: active ? 'var(--kid-accent-soft)' : 'transparent',
+                    }}
+                    onClick={() => handleMobileNavigate(item.path)}
+                  >
+                    {Icon ? <Icon width={20} height={20} /> : null}
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
+        </>
+      )}
 
       {showBottomNav && navItems && navItems.length > 0 && (
         <nav className="kid-bottom-nav" aria-label="Главная навигация">
