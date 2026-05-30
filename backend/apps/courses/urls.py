@@ -5,7 +5,8 @@ from .views import (
     CourseRetrieveUpdateDestroyView,
     GroupListCreateView,
     GroupRetrieveUpdateDestroyView,
-    LocationListView,
+    LocationListCreateView,
+    LocationRetrieveUpdateDestroyView,
     group_comment_delete_view,
     group_comments_view,
 )
@@ -21,5 +22,6 @@ urlpatterns = [
         group_comment_delete_view,
         name="group-comment-delete",
     ),
-    path("locations/", LocationListView.as_view(), name="locations-list"),
+    path("locations/", LocationListCreateView.as_view(), name="locations-list-create"),
+    path("locations/<int:pk>/", LocationRetrieveUpdateDestroyView.as_view(), name="locations-detail"),
 ]

@@ -10,10 +10,31 @@ from .models import Course, Group, GroupComment, Location
 from .serializers import CourseSerializer, GroupSerializer, LocationSerializer
 
 
-class LocationListView(generics.ListAPIView):
-    queryset = Location.objects.filter(is_active=True).order_by("name")
+class LocationListCreateView(generics.ListCreateAPIView):
     serializer_class = LocationSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Администраторы видят все локации (включая неактивные), остальные — только активные
+        user = self.request.user
+        is_admin = user.is_superuser or user.roles.filter(code="admin").exists()
+        if is_admin:
+            return Location.objects.all().order_by("name")
+        return Location.objects.filter(is_active=True).order_by("name")
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), IsAdminRole()]
+        return [IsAuthenticated()]
+
+
+class LocationRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Location.objects.all().order_by("name")
+    serializer_class = LocationSerializer
+
+    def get_permissions(self):
+        if self.request.method in ("PUT", "PATCH", "DELETE"):
+            return [IsAuthenticated(), IsAdminRole()]
+        return [IsAuthenticated()]
 
 
 class CourseListCreateView(generics.ListCreateAPIView):

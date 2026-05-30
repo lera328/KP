@@ -86,6 +86,11 @@ const SearchableMultiSelect = ({
 
 export const AdminGroups = () => {
   const navigate = useNavigate();
+
+  // ── Вкладки ─────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState('groups'); // 'groups' | 'locations'
+
+  // ── Данные групп ────────────────────────────────────────────────────────
   const [groups, setGroups] = useState([]);
   const [users, setUsers] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -99,11 +104,24 @@ export const AdminGroups = () => {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const [filters, setFilters] = useState({
-    query: '',
-    status: 'all',
-    location: '',
-  });
+  // ── Состояние управления локациями ──────────────────────────────────────
+  const [locError, setLocError] = useState('');
+  const [locSuccess, setLocSuccess] = useState('');
+  const [savingLoc, setSavingLoc] = useState(false);
+
+  // Форма создания новой локации
+  const [newLocForm, setNewLocForm] = useState({ name: '', address: '' });
+  const [createLocOpen, setCreateLocOpen] = useState(false);
+
+  // Инлайн-редактирование существующей локации
+  const [editLocId, setEditLocId] = useState(null);
+  const [editLocForm, setEditLocForm] = useState({ name: '', address: '' });
+
+
+  const [filtersState, setFiltersState] = useState({ query: '', status: 'all', location: '' });
+
+  const filters = filtersState;
+  const setFilters = setFiltersState;
 
   const locationMap = useMemo(() => new Map(locations.map((l) => [l.id, l])), [locations]);
 
@@ -249,8 +267,117 @@ export const AdminGroups = () => {
     setFilters({ query: '', status: 'all', location: '' });
   };
 
+  // ── Обработчики локаций ─────────────────────────────────────────────────
+
+  const handleCreateLocation = async (e) => {
+    e.preventDefault();
+    if (!newLocForm.name.trim()) {
+      setLocError('Введите название локации.');
+      return;
+    }
+    setSavingLoc(true);
+    setLocError('');
+    setLocSuccess('');
+    try {
+      await api.createLocation({ name: newLocForm.name.trim(), address: newLocForm.address.trim() });
+      setLocSuccess('Локация создана.');
+      setNewLocForm({ name: '', address: '' });
+      setCreateLocOpen(false);
+      const fresh = await api.getLocations();
+      setLocations(Array.isArray(fresh) ? fresh : []);
+    } catch (err) {
+      setLocError(err.message || 'Не удалось создать локацию.');
+    } finally {
+      setSavingLoc(false);
+    }
+  };
+
+  const startEditLoc = (loc) => {
+    setEditLocId(loc.id);
+    setEditLocForm({ name: loc.name, address: loc.address || '' });
+    setLocError('');
+    setLocSuccess('');
+  };
+
+  const cancelEditLoc = () => {
+    setEditLocId(null);
+    setEditLocForm({ name: '', address: '' });
+  };
+
+  const handleSaveEditLoc = async (locId) => {
+    if (!editLocForm.name.trim()) {
+      setLocError('Название не может быть пустым.');
+      return;
+    }
+    setSavingLoc(true);
+    setLocError('');
+    setLocSuccess('');
+    try {
+      await api.updateLocation(locId, { name: editLocForm.name.trim(), address: editLocForm.address.trim() });
+      setLocSuccess('Локация обновлена.');
+      setEditLocId(null);
+      const fresh = await api.getLocations();
+      setLocations(Array.isArray(fresh) ? fresh : []);
+    } catch (err) {
+      setLocError(err.message || 'Не удалось сохранить изменения.');
+    } finally {
+      setSavingLoc(false);
+    }
+  };
+
+  const handleToggleLocActive = async (loc) => {
+    setSavingLoc(true);
+    setLocError('');
+    setLocSuccess('');
+    try {
+      await api.updateLocation(loc.id, { is_active: !loc.is_active });
+      setLocSuccess(loc.is_active ? 'Локация деактивирована.' : 'Локация активирована.');
+      const fresh = await api.getLocations();
+      setLocations(Array.isArray(fresh) ? fresh : []);
+    } catch (err) {
+      setLocError(err.message || 'Не удалось изменить статус локации.');
+    } finally {
+      setSavingLoc(false);
+    }
+  };
+
   return (
     <AdminLayout title="КиберШкола — Группы">
+      {/* ── Переключатель вкладок ── */}
+      <div className="d-flex gap-2 mb-4">
+        {[
+          { key: 'groups', label: '📋 Группы' },
+          { key: 'locations', label: '📍 Локации' },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            id={`tab-${tab.key}`}
+            className="btn rounded-pill px-4"
+            style={{
+              background: activeTab === tab.key ? '#111827' : '#f1f3f5',
+              color: activeTab === tab.key ? '#fff' : '#374151',
+              fontWeight: activeTab === tab.key ? 600 : 400,
+              border: 'none',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+            onClick={() => {
+              setActiveTab(tab.key);
+              setError('');
+              setSuccess('');
+              setLocError('');
+              setLocSuccess('');
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ══════════════════ ВКЛАДКА: ГРУППЫ ══════════════════ */}
+      {activeTab === 'groups' && (
+        <>
+
       {error ? <div className="alert alert-danger rounded-3">{error}</div> : null}
       {success ? <div className="alert alert-success rounded-3">{success}</div> : null}
 
@@ -529,6 +656,250 @@ export const AdminGroups = () => {
           }}
         />
       ) : null}
+        </>
+      )}
+
+      {/* ══════════════════ ВКЛАДКА: ЛОКАЦИИ ══════════════════ */}
+      {activeTab === 'locations' && (
+        <>
+          {locError ? <div className="alert alert-danger rounded-3">{locError}</div> : null}
+          {locSuccess ? <div className="alert alert-success rounded-3">{locSuccess}</div> : null}
+
+          {/* Заголовок */}
+          <div className="d-flex align-items-center gap-3 mb-3">
+            <div className="flex-grow-1">
+              <div className="text-muted small">Точки присутствия КиберШколы</div>
+              <h3 className="fw-semibold mb-0">Локации</h3>
+            </div>
+            <button
+              type="button"
+              id="btn-refresh-locations"
+              className="btn btn-light border rounded-pill px-3 d-flex align-items-center gap-2"
+              onClick={async () => {
+                const fresh = await api.getLocations();
+                setLocations(Array.isArray(fresh) ? fresh : []);
+              }}
+              disabled={savingLoc}
+            >
+              <IconRefresh width={16} height={16} />
+              Обновить
+            </button>
+            <button
+              type="button"
+              id="btn-create-location"
+              className="btn btn-dark rounded-pill px-3 d-flex align-items-center gap-2"
+              onClick={() => {
+                setCreateLocOpen(true);
+                setLocError('');
+                setLocSuccess('');
+              }}
+              disabled={savingLoc}
+            >
+              <IconPlus width={16} height={16} />
+              Добавить локацию
+            </button>
+          </div>
+
+          {/* Список локаций */}
+          {loading ? (
+            <div className="text-muted py-4 text-center">Загрузка...</div>
+          ) : locations.length === 0 ? (
+            <div className="card border-0 shadow-sm rounded-4">
+              <div className="card-body p-4 text-center text-muted">Локации не найдены.</div>
+            </div>
+          ) : (
+            <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
+              <table className="table table-hover mb-0">
+                <thead style={{ background: '#f8f9fb' }}>
+                  <tr>
+                    <th className="ps-4 py-3 fw-semibold" style={{ fontSize: 13, color: '#6b7280' }}>НАЗВАНИЕ</th>
+                    <th className="py-3 fw-semibold" style={{ fontSize: 13, color: '#6b7280' }}>АДРЕС</th>
+                    <th className="py-3 fw-semibold text-center" style={{ fontSize: 13, color: '#6b7280' }}>СТАТУС</th>
+                    <th className="pe-4 py-3" style={{ width: 180 }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {locations.map((loc) => (
+                    <tr key={loc.id} style={{ opacity: loc.is_active ? 1 : 0.5 }}>
+                      {editLocId === loc.id ? (
+                        /* ── режим редактирования ── */
+                        <>
+                          <td className="ps-4 py-2" colSpan={2}>
+                            <div className="d-flex gap-2">
+                              <input
+                                id={`loc-edit-name-${loc.id}`}
+                                className="form-control form-control-sm rounded-3"
+                                placeholder="Название"
+                                value={editLocForm.name}
+                                onChange={(e) => setEditLocForm((p) => ({ ...p, name: e.target.value }))}
+                                disabled={savingLoc}
+                                autoFocus
+                              />
+                              <input
+                                id={`loc-edit-address-${loc.id}`}
+                                className="form-control form-control-sm rounded-3"
+                                placeholder="Адрес (необязательно)"
+                                value={editLocForm.address}
+                                onChange={(e) => setEditLocForm((p) => ({ ...p, address: e.target.value }))}
+                                disabled={savingLoc}
+                              />
+                            </div>
+                          </td>
+                          <td className="py-2 text-center">
+                            <span
+                              className="badge rounded-pill"
+                              style={{
+                                background: loc.is_active ? '#ecfdf5' : '#f1f3f5',
+                                color: loc.is_active ? '#16a34a' : '#6b7280',
+                              }}
+                            >
+                              {loc.is_active ? 'Активна' : 'Неактивна'}
+                            </span>
+                          </td>
+                          <td className="pe-4 py-2">
+                            <div className="d-flex gap-2 justify-content-end">
+                              <button
+                                type="button"
+                                id={`btn-save-loc-${loc.id}`}
+                                className="btn btn-sm btn-dark rounded-pill px-3"
+                                onClick={() => handleSaveEditLoc(loc.id)}
+                                disabled={savingLoc}
+                              >
+                                Сохранить
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-light border rounded-pill px-3"
+                                onClick={cancelEditLoc}
+                                disabled={savingLoc}
+                              >
+                                Отмена
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        /* ── режим просмотра ── */
+                        <>
+                          <td className="ps-4 py-3 fw-semibold">{loc.name}</td>
+                          <td className="py-3 text-muted" style={{ fontSize: 14 }}>
+                            {loc.address || <span className="text-muted fst-italic">не указан</span>}
+                          </td>
+                          <td className="py-3 text-center">
+                            <span
+                              className="badge rounded-pill"
+                              style={{
+                                background: loc.is_active ? '#ecfdf5' : '#f1f3f5',
+                                color: loc.is_active ? '#16a34a' : '#6b7280',
+                                fontWeight: 500,
+                              }}
+                            >
+                              {loc.is_active ? 'Активна' : 'Неактивна'}
+                            </span>
+                          </td>
+                          <td className="pe-4 py-3">
+                            <div className="d-flex gap-2 justify-content-end">
+                              <button
+                                type="button"
+                                id={`btn-edit-loc-${loc.id}`}
+                                className="btn btn-sm btn-light border rounded-pill px-3"
+                                onClick={() => startEditLoc(loc)}
+                                disabled={savingLoc}
+                              >
+                                Изменить
+                              </button>
+                              <button
+                                type="button"
+                                id={`btn-toggle-loc-${loc.id}`}
+                                className={`btn btn-sm rounded-pill px-3 ${
+                                  loc.is_active ? 'btn-outline-danger' : 'btn-outline-success'
+                                }`}
+                                onClick={() => handleToggleLocActive(loc)}
+                                disabled={savingLoc}
+                              >
+                                {loc.is_active ? 'Деактивировать' : 'Активировать'}
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Модальное окно создания локации */}
+          {createLocOpen ? (
+            <div
+              className="modal fade show d-block"
+              tabIndex={-1}
+              style={{ background: 'rgba(17,24,39,0.5)' }}
+              onClick={(e) => { if (e.target === e.currentTarget) setCreateLocOpen(false); }}
+            >
+              <div className="modal-dialog modal-dialog-centered">
+                <div className="modal-content border-0 rounded-4 shadow">
+                  <div className="modal-header border-0 px-4 pt-4 pb-2">
+                    <h5 className="modal-title fw-semibold">Новая локация</h5>
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={() => setCreateLocOpen(false)}
+                      disabled={savingLoc}
+                    />
+                  </div>
+                  <form onSubmit={handleCreateLocation}>
+                    <div className="modal-body px-4 pb-2">
+                      <div className="mb-3">
+                        <label className="form-label" htmlFor="loc-new-name">Название *</label>
+                        <input
+                          id="loc-new-name"
+                          className="form-control rounded-3"
+                          placeholder="Например: ул. Куйбышева"
+                          value={newLocForm.name}
+                          onChange={(e) => setNewLocForm((p) => ({ ...p, name: e.target.value }))}
+                          disabled={savingLoc}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="mb-3">
+                        <label className="form-label" htmlFor="loc-new-address">Адрес</label>
+                        <input
+                          id="loc-new-address"
+                          className="form-control rounded-3"
+                          placeholder="Полный адрес (необязательно)"
+                          value={newLocForm.address}
+                          onChange={(e) => setNewLocForm((p) => ({ ...p, address: e.target.value }))}
+                          disabled={savingLoc}
+                        />
+                      </div>
+                    </div>
+                    <div className="modal-footer border-0 px-4 pb-4 pt-2">
+                      <button
+                        type="button"
+                        className="btn btn-light border rounded-pill px-3"
+                        onClick={() => setCreateLocOpen(false)}
+                        disabled={savingLoc}
+                      >
+                        Отмена
+                      </button>
+                      <button
+                        type="submit"
+                        id="btn-save-new-location"
+                        className="btn btn-dark rounded-pill px-4"
+                        disabled={savingLoc}
+                      >
+                        {savingLoc ? 'Сохраняем...' : 'Создать'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </>
+      )}
     </AdminLayout>
   );
 };

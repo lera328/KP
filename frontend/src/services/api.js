@@ -511,6 +511,26 @@ class APIService {
     return this.request('/locations/');
   }
 
+  async createLocation(data) {
+    return this.request('/locations/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateLocation(locationId, data) {
+    return this.request(`/locations/${locationId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteLocation(locationId) {
+    return this.request(`/locations/${locationId}/`, {
+      method: 'DELETE',
+    });
+  }
+
   async getTeacherMakeupSlots({ from, to } = {}) {
     const params = new URLSearchParams();
     if (from) params.set('from', from);
