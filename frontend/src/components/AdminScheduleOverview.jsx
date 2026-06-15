@@ -152,13 +152,27 @@ export const AdminScheduleOverview = ({ embedded = false, lockedTeacherId = null
       {success && <div className="alert alert-success rounded-3">{success}</div>}
 
       {/* Header */}
-      <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-        <h1 className="fw-semibold mb-0" style={{ fontSize: '1.75rem' }}>
-          <IconCalendar width={28} height={28} style={{ marginRight: 8, verticalAlign: -4 }} />
-          Расписание
-        </h1>
-        <div className="ms-auto d-flex gap-2 align-items-center" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
-          <div style={{ minWidth: 160, flex: '0 0 auto' }}>
+      <div className="mb-3">
+        {/* Строка 1: заголовок + навигация */}
+        <div className="d-flex align-items-center gap-2 flex-wrap mb-2">
+          <h1 className="fw-semibold mb-0" style={{ fontSize: '1.75rem' }}>
+            <IconCalendar width={28} height={28} style={{ marginRight: 8, verticalAlign: -4 }} />
+            Расписание
+          </h1>
+          <div className="ms-auto d-flex gap-2 align-items-center">
+            <div className="btn-group flex-shrink-0">
+              <button className="btn btn-light border rounded-start-pill px-2 btn-sm" onClick={() => navWeek(-1)} disabled={loading}>‹</button>
+              <button className="btn btn-light border px-2 btn-sm" onClick={() => setCurrentWeekStart(getWeekRange().monday)} disabled={loading}>Сегодня</button>
+              <button className="btn btn-light border rounded-end-pill px-2 btn-sm" onClick={() => navWeek(1)} disabled={loading}>›</button>
+            </div>
+            <button className="btn btn-light border rounded-pill btn-sm px-2 flex-shrink-0" onClick={loadData} disabled={loading}>
+              <IconRefresh width={14} height={14} />
+            </button>
+          </div>
+        </div>
+        {/* Строка 2: фильтры — на мобиле во всю ширину */}
+        <div className="d-flex gap-2 flex-wrap">
+          <div style={{ minWidth: 160, flex: '1 1 160px' }}>
             <SearchableSelect
               size="sm"
               options={groups.map((g) => ({ value: g.id, label: g.name }))}
@@ -171,7 +185,7 @@ export const AdminScheduleOverview = ({ embedded = false, lockedTeacherId = null
             />
           </div>
           {!lockedTeacherId && (
-            <div style={{ minWidth: 200, flex: '0 0 auto' }}>
+            <div style={{ minWidth: 200, flex: '1 1 200px' }}>
               <SearchableSelect
                 size="sm"
                 options={teachers.map((t) => ({ value: t.id, label: teacherLabel(t) }))}
@@ -184,15 +198,6 @@ export const AdminScheduleOverview = ({ embedded = false, lockedTeacherId = null
               />
             </div>
           )}
-
-          <div className="btn-group flex-shrink-0">
-            <button className="btn btn-light border rounded-start-pill px-2 btn-sm" onClick={() => navWeek(-1)} disabled={loading}>‹</button>
-            <button className="btn btn-light border px-2 btn-sm" onClick={() => setCurrentWeekStart(getWeekRange().monday)} disabled={loading}>Сегодня</button>
-            <button className="btn btn-light border rounded-end-pill px-2 btn-sm" onClick={() => navWeek(1)} disabled={loading}>›</button>
-          </div>
-          <button className="btn btn-light border rounded-pill btn-sm px-2 flex-shrink-0" onClick={loadData} disabled={loading}>
-            <IconRefresh width={14} height={14} />
-          </button>
         </div>
       </div>
 
