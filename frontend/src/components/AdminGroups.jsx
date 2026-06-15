@@ -708,125 +708,103 @@ export const AdminGroups = () => {
               <div className="card-body p-4 text-center text-muted">Локации не найдены.</div>
             </div>
           ) : (
-            <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
-              <table className="table table-hover mb-0">
-                <thead style={{ background: '#f8f9fb' }}>
-                  <tr>
-                    <th className="ps-4 py-3 fw-semibold" style={{ fontSize: 13, color: '#6b7280' }}>НАЗВАНИЕ</th>
-                    <th className="py-3 fw-semibold" style={{ fontSize: 13, color: '#6b7280' }}>АДРЕС</th>
-                    <th className="py-3 fw-semibold text-center" style={{ fontSize: 13, color: '#6b7280' }}>СТАТУС</th>
-                    <th className="pe-4 py-3" style={{ width: 180 }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {locations.map((loc) => (
-                    <tr key={loc.id} style={{ opacity: loc.is_active ? 1 : 0.5 }}>
-                      {editLocId === loc.id ? (
-                        /* ── режим редактирования ── */
-                        <>
-                          <td className="ps-4 py-2" colSpan={2}>
-                            <div className="d-flex gap-2">
-                              <input
-                                id={`loc-edit-name-${loc.id}`}
-                                className="form-control form-control-sm rounded-3"
-                                placeholder="Название"
-                                value={editLocForm.name}
-                                onChange={(e) => setEditLocForm((p) => ({ ...p, name: e.target.value }))}
-                                disabled={savingLoc}
-                                autoFocus
-                              />
-                              <input
-                                id={`loc-edit-address-${loc.id}`}
-                                className="form-control form-control-sm rounded-3"
-                                placeholder="Адрес (необязательно)"
-                                value={editLocForm.address}
-                                onChange={(e) => setEditLocForm((p) => ({ ...p, address: e.target.value }))}
-                                disabled={savingLoc}
-                              />
-                            </div>
-                          </td>
-                          <td className="py-2 text-center">
-                            <span
-                              className="badge rounded-pill"
-                              style={{
-                                background: loc.is_active ? '#ecfdf5' : '#f1f3f5',
-                                color: loc.is_active ? '#16a34a' : '#6b7280',
-                              }}
-                            >
-                              {loc.is_active ? 'Активна' : 'Неактивна'}
-                            </span>
-                          </td>
-                          <td className="pe-4 py-2">
-                            <div className="d-flex gap-2 justify-content-end">
-                              <button
-                                type="button"
-                                id={`btn-save-loc-${loc.id}`}
-                                className="btn btn-sm btn-dark rounded-pill px-3"
-                                onClick={() => handleSaveEditLoc(loc.id)}
-                                disabled={savingLoc}
-                              >
-                                Сохранить
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-light border rounded-pill px-3"
-                                onClick={cancelEditLoc}
-                                disabled={savingLoc}
-                              >
-                                Отмена
-                              </button>
-                            </div>
-                          </td>
-                        </>
-                      ) : (
-                        /* ── режим просмотра ── */
-                        <>
-                          <td className="ps-4 py-3 fw-semibold">{loc.name}</td>
-                          <td className="py-3 text-muted" style={{ fontSize: 14 }}>
-                            {loc.address || <span className="text-muted fst-italic">не указан</span>}
-                          </td>
-                          <td className="py-3 text-center">
-                            <span
-                              className="badge rounded-pill"
-                              style={{
-                                background: loc.is_active ? '#ecfdf5' : '#f1f3f5',
-                                color: loc.is_active ? '#16a34a' : '#6b7280',
-                                fontWeight: 500,
-                              }}
-                            >
-                              {loc.is_active ? 'Активна' : 'Неактивна'}
-                            </span>
-                          </td>
-                          <td className="pe-4 py-3">
-                            <div className="d-flex gap-2 justify-content-end">
-                              <button
-                                type="button"
-                                id={`btn-edit-loc-${loc.id}`}
-                                className="btn btn-sm btn-light border rounded-pill px-3"
-                                onClick={() => startEditLoc(loc)}
-                                disabled={savingLoc}
-                              >
-                                Изменить
-                              </button>
-                              <button
-                                type="button"
-                                id={`btn-toggle-loc-${loc.id}`}
-                                className={`btn btn-sm rounded-pill px-3 ${
-                                  loc.is_active ? 'btn-outline-danger' : 'btn-outline-success'
-                                }`}
-                                onClick={() => handleToggleLocActive(loc)}
-                                disabled={savingLoc}
-                              >
-                                {loc.is_active ? 'Деактивировать' : 'Активировать'}
-                              </button>
-                            </div>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="d-flex flex-column gap-3">
+              {locations.map((loc) => (
+                <div
+                  key={loc.id}
+                  className="card border-0 shadow-sm rounded-4"
+                  style={{ opacity: loc.is_active ? 1 : 0.6 }}
+                >
+                  <div className="card-body p-3">
+                    {editLocId === loc.id ? (
+                      /* ── режим редактирования ── */
+                      <div className="d-flex flex-column gap-2">
+                        <input
+                          id={`loc-edit-name-${loc.id}`}
+                          className="form-control form-control-sm rounded-3"
+                          placeholder="Название"
+                          value={editLocForm.name}
+                          onChange={(e) => setEditLocForm((p) => ({ ...p, name: e.target.value }))}
+                          disabled={savingLoc}
+                          autoFocus
+                        />
+                        <input
+                          id={`loc-edit-address-${loc.id}`}
+                          className="form-control form-control-sm rounded-3"
+                          placeholder="Адрес (необязательно)"
+                          value={editLocForm.address}
+                          onChange={(e) => setEditLocForm((p) => ({ ...p, address: e.target.value }))}
+                          disabled={savingLoc}
+                        />
+                        <div className="d-flex gap-2 mt-1">
+                          <button
+                            type="button"
+                            id={`btn-save-loc-${loc.id}`}
+                            className="btn btn-sm btn-dark rounded-pill px-3"
+                            onClick={() => handleSaveEditLoc(loc.id)}
+                            disabled={savingLoc}
+                          >
+                            Сохранить
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-light border rounded-pill px-3"
+                            onClick={cancelEditLoc}
+                            disabled={savingLoc}
+                          >
+                            Отмена
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* ── режим просмотра ── */
+                      <div className="d-flex align-items-start gap-3">
+                        <div className="flex-grow-1 min-width-0">
+                          <div className="fw-semibold" style={{ fontSize: 15 }}>{loc.name}</div>
+                          <div className="text-muted small mt-1">
+                            {loc.address || <span className="fst-italic">адрес не указан</span>}
+                          </div>
+                        </div>
+                        <div className="d-flex flex-column flex-sm-row align-items-end align-items-sm-center gap-2 flex-shrink-0">
+                          <span
+                            className="badge rounded-pill"
+                            style={{
+                              background: loc.is_active ? '#ecfdf5' : '#f1f3f5',
+                              color: loc.is_active ? '#16a34a' : '#6b7280',
+                              fontWeight: 500,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {loc.is_active ? 'Активна' : 'Неактивна'}
+                          </span>
+                          <button
+                            type="button"
+                            id={`btn-edit-loc-${loc.id}`}
+                            className="btn btn-sm btn-light border rounded-pill px-3"
+                            onClick={() => startEditLoc(loc)}
+                            disabled={savingLoc}
+                            style={{ whiteSpace: 'nowrap' }}
+                          >
+                            Изменить
+                          </button>
+                          <button
+                            type="button"
+                            id={`btn-toggle-loc-${loc.id}`}
+                            className={`btn btn-sm rounded-pill px-3 ${
+                              loc.is_active ? 'btn-outline-danger' : 'btn-outline-success'
+                            }`}
+                            onClick={() => handleToggleLocActive(loc)}
+                            disabled={savingLoc}
+                            style={{ whiteSpace: 'nowrap' }}
+                          >
+                            {loc.is_active ? 'Деактивировать' : 'Активировать'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
