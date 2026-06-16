@@ -322,7 +322,15 @@
     height: 100%;
     max-height: 100%;
     min-height: unset;
-    overflow: hidden; /* скрываем overflow на уровне контента */
+    overflow: hidden;
+  }
+  /* form внутри modal-content разрывает flex-цепочку — чиним */
+  .modal-dialog:not(.modal-fullscreen) .modal-content > form {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
   }
   /* modal-body — растягивается и скроллится */
   .modal-dialog:not(.modal-fullscreen) .modal-body {
@@ -330,6 +338,7 @@
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    min-height: 0;
   }
   /* header и footer — фиксированной высоты, не скроллятся */
   .modal-dialog:not(.modal-fullscreen) .modal-header,
