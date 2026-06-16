@@ -303,19 +303,29 @@
   }
 }
 
-/* ---------- Модалки на мобильных — fullscreen ---------- */
+/* ---------- Модалки на мобильных — fullscreen со скроллом ---------- */
 @media (max-width: 575.98px) {
   .modal-dialog:not(.modal-fullscreen) {
     margin: 0;
     max-width: 100%;
     width: 100%;
+    /* Фиксированная высота = весь экран, чтобы scrollable работал */
     height: 100%;
-    min-height: 100%;
+    max-height: 100%;
+    min-height: unset;
   }
   .modal-dialog:not(.modal-fullscreen) .modal-content {
     border-radius: 0;
-    min-height: 100%;
     border: 0;
+    /* Занимаем весь экран и разрешаем flex-scroll Bootstrap */
+    height: 100%;
+    max-height: 100%;
+    min-height: unset;
+  }
+  /* modal-dialog-scrollable: body скроллится, header/footer фиксированы */
+  .modal-dialog-scrollable .modal-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .modal-body {
     padding: 1rem;
