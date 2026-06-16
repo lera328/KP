@@ -666,38 +666,40 @@ export const AdminGroups = () => {
           {locSuccess ? <div className="alert alert-success rounded-3">{locSuccess}</div> : null}
 
           {/* Заголовок */}
-          <div className="d-flex align-items-center gap-3 mb-3">
+          <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
             <div className="flex-grow-1">
               <div className="text-muted small">Точки присутствия КиберШколы</div>
               <h3 className="fw-semibold mb-0">Локации</h3>
             </div>
-            <button
-              type="button"
-              id="btn-refresh-locations"
-              className="btn btn-light border rounded-pill px-3 d-flex align-items-center gap-2"
-              onClick={async () => {
-                const fresh = await api.getLocations();
-                setLocations(Array.isArray(fresh) ? fresh : []);
-              }}
-              disabled={savingLoc}
-            >
-              <IconRefresh width={16} height={16} />
-              Обновить
-            </button>
-            <button
-              type="button"
-              id="btn-create-location"
-              className="btn btn-dark rounded-pill px-3 d-flex align-items-center gap-2"
-              onClick={() => {
-                setCreateLocOpen(true);
-                setLocError('');
-                setLocSuccess('');
-              }}
-              disabled={savingLoc}
-            >
-              <IconPlus width={16} height={16} />
-              Добавить локацию
-            </button>
+            <div className="d-flex gap-2 flex-shrink-0">
+              <button
+                type="button"
+                id="btn-refresh-locations"
+                className="btn btn-light border rounded-pill px-3 d-flex align-items-center gap-2"
+                onClick={async () => {
+                  const fresh = await api.getLocations();
+                  setLocations(Array.isArray(fresh) ? fresh : []);
+                }}
+                disabled={savingLoc}
+              >
+                <IconRefresh width={16} height={16} />
+                <span className="d-none d-sm-inline">Обновить</span>
+              </button>
+              <button
+                type="button"
+                id="btn-create-location"
+                className="btn btn-dark rounded-pill px-3 d-flex align-items-center gap-2"
+                onClick={() => {
+                  setCreateLocOpen(true);
+                  setLocError('');
+                  setLocSuccess('');
+                }}
+                disabled={savingLoc}
+              >
+                <IconPlus width={16} height={16} />
+                <span>Добавить локацию</span>
+              </button>
+            </div>
           </div>
 
           {/* Список локаций */}
@@ -816,7 +818,7 @@ export const AdminGroups = () => {
               style={{ background: 'rgba(17,24,39,0.5)' }}
               onClick={(e) => { if (e.target === e.currentTarget) setCreateLocOpen(false); }}
             >
-              <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                 <div className="modal-content border-0 rounded-4 shadow">
                   <div className="modal-header border-0 px-4 pt-4 pb-2">
                     <h5 className="modal-title fw-semibold">Новая локация</h5>
