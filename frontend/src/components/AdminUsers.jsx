@@ -707,7 +707,7 @@ export const AdminUsers = () => {
         <>
           <div className="modal-backdrop show" onClick={closeViewUser} />
           <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true">
-            <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
               <div className="modal-content rounded-4 border-0 shadow-lg">
                 <div className="modal-header border-0">
                   <h5 className="modal-title fw-semibold">Профиль пользователя</h5>
@@ -841,7 +841,7 @@ export const AdminUsers = () => {
         <>
           <div className="modal-backdrop show" onClick={closeCreateModal} />
           <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true">
-            <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
               <div className="modal-content rounded-4 border-0 shadow-lg">
                 <div className="modal-header border-0">
                   <h5 className="modal-title fw-semibold">Создать пользователя</h5>
@@ -1029,7 +1029,7 @@ export const AdminUsers = () => {
         <>
           <div className="modal-backdrop show" onClick={closeEditUser} />
           <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true">
-            <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
               <div className="modal-content rounded-4 border-0 shadow-lg">
                 <div className="modal-header border-0">
                   <h5 className="modal-title fw-semibold">Редактировать пользователя</h5>
