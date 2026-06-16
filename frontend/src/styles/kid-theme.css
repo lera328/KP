@@ -309,23 +309,32 @@
     margin: 0;
     max-width: 100%;
     width: 100%;
-    /* Фиксированная высота = весь экран, чтобы scrollable работал */
     height: 100%;
     max-height: 100%;
     min-height: unset;
   }
+  /* modal-content — flex-колонка, занимает весь экран */
   .modal-dialog:not(.modal-fullscreen) .modal-content {
     border-radius: 0;
     border: 0;
-    /* Занимаем весь экран и разрешаем flex-scroll Bootstrap */
+    display: flex;
+    flex-direction: column;
     height: 100%;
     max-height: 100%;
     min-height: unset;
+    overflow: hidden; /* скрываем overflow на уровне контента */
   }
-  /* modal-dialog-scrollable: body скроллится, header/footer фиксированы */
-  .modal-dialog-scrollable .modal-body {
+  /* modal-body — растягивается и скроллится */
+  .modal-dialog:not(.modal-fullscreen) .modal-body {
+    flex: 1 1 auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  /* header и footer — фиксированной высоты, не скроллятся */
+  .modal-dialog:not(.modal-fullscreen) .modal-header,
+  .modal-dialog:not(.modal-fullscreen) .modal-footer {
+    flex-shrink: 0;
   }
   .modal-body {
     padding: 1rem;
