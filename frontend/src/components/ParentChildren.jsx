@@ -121,7 +121,7 @@ export const ParentChildren = () => {
                     {/* Баланс */}
                     <div className="text-end flex-shrink-0">
                       <div className="text-muted small">Баланс</div>
-                      <div className="fw-semibold" style={{ fontSize: '1.1rem', color: hasDebt ? '#dc2626' : isPeriod ? '#2563eb' : '#111827' }}>
+                      <div className="fw-semibold" style={{ fontSize: '1.1rem', color: hasDebt ? '#dc2626' : '#111827' }}>
                         {balanceLabel}
                       </div>
                     </div>
