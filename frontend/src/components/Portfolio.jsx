@@ -96,12 +96,14 @@ export const Portfolio = ({ mode = 'student' }) => {
     return data.lessons;
   }, [data]);
 
-  const kid = mode === 'student';
+  const isStudent = mode === 'student';
+  const isParent = mode === 'parent';
+  const kidStyle = true; // Применяем округлый стиль ко всем (родитель и ученик)
 
   return (
-    <AppLayout title={layoutTitle} navItems={navItems} kidMode={kid}>
-      {error && <div className={kid ? 'alert alert-danger rounded-4' : 'alert alert-danger'}>{error}</div>}
-      {success && <div className={kid ? 'alert alert-success rounded-4' : 'alert alert-success'}>{success}</div>}
+    <AppLayout title={layoutTitle} navItems={navItems} kidMode={kidStyle}>
+      {error && <div className={kidStyle ? 'alert alert-danger rounded-4' : 'alert alert-danger'}>{error}</div>}
+      {success && <div className={kidStyle ? 'alert alert-success rounded-4' : 'alert alert-success'}>{success}</div>}
 
       {loading ? (
         <div className="p-3">Загрузка портфолио…</div>
@@ -110,91 +112,56 @@ export const Portfolio = ({ mode = 'student' }) => {
       ) : (
         <>
           {/* Заголовок */}
-          {kid ? (
-            <div className="mb-4">
-              <div className="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
-                <div>
-                  <div className="text-muted small">Моё портфолио</div>
-                  <h1 className="fw-semibold mb-1" style={{ fontSize: '2rem' }}>
-                    {data.student.name}
-                  </h1>
-                  <div className="text-muted small">
-                    Обновлено {formatDateTime(data.generated_at)}
-                  </div>
+          <div className="mb-4">
+            <div className="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+              <div>
+                <div className="text-muted small">
+                  {isStudent ? 'Моё портфолио' : 'Портфолио ребёнка'}
                 </div>
-                <div className="d-flex flex-wrap gap-2">
-                  <button
-                    className="btn btn-dark rounded-pill px-3"
-                    onClick={handleDownloadPdf}
-                    disabled={downloading}
-                  >
-                    {downloading ? 'Готовим PDF…' : 'Скачать PDF'}
-                  </button>
-                  {data.public_url ? (
-                    <button
-                      className="btn btn-light border rounded-pill px-3"
-                      onClick={handleCopyPublicUrl}
-                    >
-                      {copied ? 'Скопировано' : 'Скопировать ссылку'}
-                    </button>
-                  ) : null}
+                <h1 className="fw-semibold mb-1" style={{ fontSize: '2rem' }}>
+                  {data.student.name}
+                </h1>
+              </div>
+              <div className="d-flex flex-wrap gap-2">
+                <button
+                  className="btn btn-dark rounded-pill px-3"
+                  onClick={handleDownloadPdf}
+                  disabled={downloading}
+                >
+                  {downloading ? 'Готовим PDF…' : 'Скачать PDF'}
+                </button>
+                {data.public_url ? (
                   <button
                     className="btn btn-light border rounded-pill px-3"
-                    onClick={load}
-                    disabled={loading}
+                    onClick={handleCopyPublicUrl}
                   >
-                    Обновить
+                    {copied ? 'Скопировано' : 'Скопировать ссылку'}
                   </button>
-                </div>
+                ) : null}
+                <button
+                  className="btn btn-light border rounded-pill px-3"
+                  onClick={load}
+                  disabled={loading}
+                >
+                  Обновить
+                </button>
               </div>
             </div>
-          ) : (
-            <div className="card mb-3">
-              <div className="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
-                <div className="d-flex flex-wrap gap-2">
-                  <button className="btn btn-primary" onClick={handleDownloadPdf} disabled={downloading}>
-                    {downloading ? 'Готовим PDF…' : 'Скачать PDF'}
-                  </button>
-                  {data.public_url ? (
-                    <button className="btn btn-outline-primary" onClick={handleCopyPublicUrl}>
-                      {copied ? '✔ Скопировано' : 'Скопировать публичную ссылку'}
-                    </button>
-                  ) : null}
-                  <button className="btn btn-outline-secondary" onClick={load} disabled={loading}>
-                    Обновить
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          </div>
 
           {/* Статистика */}
           <div className="row g-3 mb-4">
-            <StatCard kid={kid} label="Проектов" value={data.stats.projects_total} />
-            <StatCard kid={kid} label="Посещено занятий" value={data.stats.lessons_attended} />
-            <StatCard kid={kid} label="Получено лайков" value={data.stats.likes_total} />
-            <StatCard kid={kid} label="Средняя оценка" value={data.stats.grades_average ?? '—'} />
+            <StatCard kid={kidStyle} label="Проектов" value={data.stats.projects_total} />
+            <StatCard kid={kidStyle} label="Посещено занятий" value={data.stats.lessons_attended} />
+            <StatCard kid={kidStyle} label="Получено лайков" value={data.stats.likes_total} />
+            <StatCard kid={kidStyle} label="Средняя оценка" value={data.stats.grades_average ?? '—'} />
           </div>
 
-          {/* Группы — скрыты в детском режиме */}
-          {!kid && Array.isArray(data.groups) && data.groups.length > 0 ? (
-            <div className={kid ? 'card border-0 shadow-sm rounded-4 mb-4' : 'card mb-3'}>
-              <div className={kid ? 'card-body pb-2' : 'card-header'}>
-                <strong>Группы и направления</strong>
-              </div>
-              <ul className={kid ? 'list-group list-group-flush rounded-bottom-4' : 'list-group list-group-flush'}>
-                {data.groups.map((g, idx) => (
-                  <li key={`${g.name}-${idx}`} className="list-group-item d-flex justify-content-between border-0" style={kid ? { background: 'transparent' } : undefined}>
-                    <span>{g.name}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+
 
           {/* Проекты */}
-          <div className={kid ? 'card border-0 shadow-sm rounded-4 mb-4' : 'card mb-3'}>
-            <div className={kid ? 'card-body pb-2' : 'card-header'}>
+          <div className={kidStyle ? 'card border-0 shadow-sm rounded-4 mb-4' : 'card mb-3'}>
+            <div className={kidStyle ? 'card-body pb-2' : 'card-header'}>
               <strong>Проекты {data.projects?.length ? `(${data.projects.length})` : ''}</strong>
             </div>
             <div className="card-body p-0">
@@ -274,27 +241,17 @@ export const Portfolio = ({ mode = 'student' }) => {
             </div>
           </div>
 
-          {/* Пройденные занятия и оценки — скрыты в детском режиме */}
-          {!kid && (
-          <div className={kid ? 'card border-0 shadow-sm rounded-4 mb-4' : 'card mb-3'}>
-            <div className={kid ? 'card-body pb-0' : 'card-header'}>
-              <strong>{kid ? 'Пройденные занятия' : `Пройденные занятия и оценки (${lessons.length})`}</strong>
-              {data.grades_summary?.count ? (
-                <span className="ms-2 text-muted small">
-                  {kid ? '' : 'Получено оценок:'} {data.grades_summary.count} · Средняя:{' '}
-                  {data.grades_summary.average} · Диапазон:{' '}
-                  {data.grades_summary.min}–{data.grades_summary.max}
-                </span>
-              ) : (
-                <span className="ms-2 text-muted small">Оценок пока нет.</span>
-              )}
+          {/* Пройденные занятия и оценки */}
+          <div className={kidStyle ? 'card border-0 shadow-sm rounded-4 mb-4' : 'card mb-3'}>
+            <div className={kidStyle ? 'card-body pb-0' : 'card-header'}>
+              <strong>Пройденные занятия</strong>
             </div>
-            <div className={kid ? 'card-body pt-3' : 'card-body p-0'}>
+            <div className={kidStyle ? 'card-body pt-3' : 'card-body p-0'}>
               {lessons.length === 0 ? (
-                <div className={kid ? 'text-muted text-center py-3' : 'p-3 text-muted'}>
+                <div className={kidStyle ? 'text-muted text-center py-3' : 'p-3 text-muted'}>
                   Посещений ещё нет.
                 </div>
-              ) : kid ? (
+              ) : kidStyle ? (
                 <div className="d-flex flex-column gap-2">
                   {lessons.map((lesson) => (
                     <KidLessonCard key={lesson.lesson_id} lesson={lesson} />
@@ -343,7 +300,6 @@ export const Portfolio = ({ mode = 'student' }) => {
               )}
             </div>
           </div>
-          )}
         </>
       )}
     </AppLayout>
