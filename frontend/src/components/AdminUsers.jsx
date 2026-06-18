@@ -847,7 +847,7 @@ export const AdminUsers = () => {
                   <h5 className="modal-title fw-semibold">Создать пользователя</h5>
                   <button type="button" className="btn-close" onClick={closeCreateModal} disabled={savingCreate} />
                 </div>
-                <form onSubmit={handleCreateSubmit}>
+                <form onSubmit={handleCreateSubmit} className="d-flex flex-column flex-grow-1" style={{ minHeight: 0 }}>
                   <div className="modal-body">
                     <div className="mb-3">
                       <label className="form-label">Имя пользователя *</label>
@@ -1035,7 +1035,7 @@ export const AdminUsers = () => {
                   <h5 className="modal-title fw-semibold">Редактировать пользователя</h5>
                   <button type="button" className="btn-close" onClick={closeEditUser} disabled={savingEdit} />
                 </div>
-                <form onSubmit={handleEditSubmit}>
+                <form onSubmit={handleEditSubmit} className="d-flex flex-column flex-grow-1" style={{ minHeight: 0 }}>
                   <div className="modal-body">
                     {isEditingSelf ? (
                       <div className="alert alert-warning">
