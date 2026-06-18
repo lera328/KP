@@ -151,16 +151,6 @@ export const Portfolio = ({ mode = 'student' }) => {
           ) : (
             <div className="card mb-3">
               <div className="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
-                <div>
-                  <h4 className="mb-1">{data.student.name}</h4>
-                  <div className="text-muted small">
-                    {data.student.username}
-                    {data.student.email ? ` · ${data.student.email}` : ''}
-                  </div>
-                  <div className="text-muted small">
-                    Сформировано: {formatDateTime(data.generated_at)}
-                  </div>
-                </div>
                 <div className="d-flex flex-wrap gap-2">
                   <button className="btn btn-primary" onClick={handleDownloadPdf} disabled={downloading}>
                     {downloading ? 'Готовим PDF…' : 'Скачать PDF'}
