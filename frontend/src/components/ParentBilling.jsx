@@ -140,7 +140,7 @@ export const ParentBilling = () => {
                         {payments.map((p) => (
                           <div key={p.id} className="d-flex justify-content-between align-items-center rounded-3 p-2" style={{ background: '#f8f9fb' }}>
                             <span className="small">{formatDateTime(p.paid_at)}</span>
-                            <span className="fw-semibold small">{p.amount} ₸</span>
+                            <span className="fw-semibold small">{p.amount} ₽</span>
                           </div>
                         ))}
                       </div>
@@ -156,7 +156,7 @@ export const ParentBilling = () => {
                           const st = INTENT_STATUS[intent.status] || INTENT_STATUS.error;
                           return (
                             <div key={intent.id} className="d-flex flex-wrap align-items-center gap-2 rounded-3 p-2" style={{ background: '#f8f9fb' }}>
-                              <span className="small flex-grow-1">{planLabel(intent.plan)} · {intent.lessons} зан. · {intent.amount} ₸</span>
+                              <span className="small flex-grow-1">{planLabel(intent.plan)} · {intent.lessons} зан. · {intent.amount} ₽</span>
                               <span className="badge rounded-pill" style={{ background: st.bg, color: st.color, fontWeight: 500 }}>{st.label}</span>
                               <span className="text-muted small">{formatDateTime(intent.created_at)}</span>
                             </div>
